@@ -6,17 +6,16 @@ set(CMAKE_AUTOUIC ON)
 set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTORCC ON)
 
-set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 find_package(QT NAMES Qt6 Qt5 REQUIRED COMPONENTS Widgets)
 find_package(Qt${QT_VERSION_MAJOR} REQUIRED COMPONENTS Widgets)
-find_package(Qt${QT_VERSION_MAJOR} REQUIRED COMPONENTS Core)
-find_package(Qt${QT_VERSION_MAJOR} REQUIRED COMPONENTS Core)
+# find_package(Qt${QT_VERSION_MAJOR} REQUIRED COMPONENTS Core)
 find_package(Qt6 REQUIRED COMPONENTS Multimedia)
 find_package(Qt6 REQUIRED COMPONENTS StateMachine)
 find_package(Qt6 REQUIRED COMPONENTS OpenGLWidgets)
-#查找库文件:FFmpeg、OpenSSL
+#查找库文件:FFmpeg
 if(WIN32)
     set(FFMPEG_ROOT "E:/Tools/ffmpeg-8.0-full_build-shared" CACHE PATH "FFmpeg 安装目录")
     find_path(FFMPEG_INCLUDE_DIR
@@ -35,20 +34,14 @@ if(WIN32)
         ${FFMPEG_AVUTIL_LIB}
         ${FFMPEG_SWRESAMPLE_LIB}
     )
-
-    set(OPENSSL_ROOT_DIR "E:/Tools/OpenSSL-Win64" CACHE PATH "Path to OpenSSL root directory")
-    find_path(OPENSSL_INCLUDE_DIR
-        NAMES openssl/ssl.h
-        PATHS "${OPENSSL_ROOT_DIR}/include"
-        REQUIRED
-    )
-    find_library(OPENSSL_SSL_LIB NAMES libssl PATHS "${OPENSSL_ROOT_DIR}/lib/VC/x64/MD" REQUIRED)
-    find_library(OPENSSL_CRYPTO_LIB NAMES libcrypto PATHS "${OPENSSL_ROOT_DIR}/lib/VC/x64/MD" REQUIRED)
-    set(OPENSSL_INCLUDE_DIRS ${OPENSSL_INCLUDE_DIR})
-    set(OPENSSL_LIBRARIES
-        ${OPENSSL_SSL_LIB}
-        ${OPENSSL_CRYPTO_LIB}
-    )
+elseif(UNIX)
+    find_package(PkgConfig REQUIRED)
+        pkg_check_modules(FFMPEG REQUIRED
+            libavformat
+            libavcodec
+            libavutil
+            libswresample
+        )
 endif()
 set(PROJECT_SOURCES
         src/main.cpp
@@ -56,14 +49,13 @@ set(PROJECT_SOURCES
         src/mainwindow.h
         ui/mainwindow.ui
 )
-
+include_directories(${PROJECT_SOURCE_DIR})
 if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)
     qt_add_executable(monitor_client
         MANUAL_FINALIZATION
         ${PROJECT_SOURCES}
         src/tavproducer.h src/tavproducer.cpp
         src/taudioconsumer.h src/taudioconsumer.cpp
-
         src/tavbufferpool.h src/tavbufferpool.cpp
         src/tvideodisplay.h src/tvideodisplay.cpp
         src/tvideoconsumer.h src/tvideoconsumer.cpp
@@ -86,19 +78,15 @@ else()
     endif()
 endif()
 
+# target_link_libraries(monitor_client PRIVATE Qt${QT_VERSION_MAJOR}::Core)
 target_link_libraries(monitor_client PRIVATE Qt${QT_VERSION_MAJOR}::Widgets)
 target_link_libraries(monitor_client PRIVATE Qt6::Multimedia)
 target_link_libraries(monitor_client PRIVATE Qt6::StateMachine)
 target_link_libraries(monitor_client PRIVATE Qt6::OpenGLWidgets)
-#链接库文件:FFmpeg、OpenSSL
-if(WIN32)
-    target_include_directories(monitor_client PRIVATE ${FFMPEG_INCLUDE_DIRS})
-    target_link_libraries(monitor_client PRIVATE ${FFMPEG_LIBRARIES})
-    target_include_directories(monitor_client PRIVATE ${OPENSSL_INCLUDE_DIRS})
-    target_link_libraries(monitor_client PRIVATE ${OPENSSL_LIBRARIES})
-target_link_libraries(monitor_client PRIVATE Qt${QT_VERSION_MAJOR}::Core)
-target_link_libraries(monitor_client PRIVATE Qt${QT_VERSION_MAJOR}::Core)
-endif()
+#链接库文件:FFmpeg
+target_include_directories(monitor_client PRIVATE ${FFMPEG_INCLUDE_DIRS})
+target_link_libraries(monitor_client PRIVATE ${FFMPEG_LIBRARIES})
+
 # Qt for iOS sets MACOSX_BUNDLE_GUI_IDENTIFIER automatically since Qt 6.1.
 # If you are developing for iOS or macOS you should consider setting an
 # explicit, fixed bundle identifier manually though.
