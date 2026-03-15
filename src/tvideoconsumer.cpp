@@ -3,8 +3,8 @@
 TVideoConsumer::TVideoConsumer(QObject *parent)
     : QObject{parent}
 {
-    baseTimer=new QTimer(this);
-    baseTimer->setTimerType(Qt::PreciseTimer);
+    m_baseTimer=new QTimer(this);
+    m_baseTimer->setTimerType(Qt::PreciseTimer);
 
     initStateMachine();
 }
@@ -12,106 +12,106 @@ TVideoConsumer::TVideoConsumer(QObject *parent)
 void TVideoConsumer::init()
 {
     //同步策略
-    connect(baseTimer,&QTimer::timeout,this,&TVideoConsumer::readyToRead);
+    connect(m_baseTimer,&QTimer::timeout,this,&TVideoConsumer::readyToRead);
 
-    if((buffer->open(QIODeviceBase::ReadOnly))==false)
+    if((m_buffer->open(QIODeviceBase::ReadOnly))==false)
     {
         qDebug()<<"视频消费者打开缓冲区失败!";
         QCoreApplication::exit(-1);
     }
-    isWorking=true;
-    buffer->sleep(1000);
-    emit setDisplaySize(width,height);
-    qDebug()<<"视频消费者:"<<width<<"x"<<height<<"fps:"<<fps;
+    m_isWorking=true;
+    m_buffer->sleep(1000);
+    emit setDisplaySize(m_width,m_height);
+    qDebug()<<"视频消费者:"<<m_width<<"x"<<m_height<<"fps:"<<m_fps;
     emit initFinished();
 }
 
 void TVideoConsumer::read()
 {
-    if(isWorking)
+    if(m_isWorking)
     {
-        baseTimer->start(1/fps*1000);
-        data=buffer->read(width*height*3/2);
-        emit sendFrame(data);
+        m_baseTimer->start(1/m_fps*1000);
+        m_data=m_buffer->read(m_width*m_height*3/2);
+        emit sendFrame(m_data);
     }
 }
 
 void TVideoConsumer::destroy()
 {
     qDebug()<<"视频消费者:开始销毁...";
-    if(buffer->isOpen())
+    if(m_buffer->isOpen())
     {
-        buffer->close();
+        m_buffer->close();
     }
-    stateMachine->stop();
+    m_stateMachine->stop();
 }
 
 void TVideoConsumer::reset()
 {
-    baseTimer->stop();
-    buffer->close();
-    data.clear();
-    width=height=fps=0;
+    m_baseTimer->stop();
+    m_buffer->close();
+    m_data.clear();
+    m_width=m_height=m_fps=0;
     qDebug()<<"视频消费者:异步重置完成。";
     emit turnToNoInput();
 }
 
 void TVideoConsumer::initStateMachine()
 {
-    stateMachine=new QStateMachine(this);
-    stateNoInput=new QState(stateMachine);
-    stateInit=new QState(stateMachine);//用于同步
-    stateReading=new QState(stateMachine);
-    stateDestroy=new QFinalState(stateMachine);
-    stateReset=new QState(stateMachine);
+    m_stateMachine=new QStateMachine(this);
+    m_stateNoInput=new QState(m_stateMachine);
+    m_stateInit=new QState(m_stateMachine);//用于同步
+    m_stateReading=new QState(m_stateMachine);
+    m_stateDestroy=new QFinalState(m_stateMachine);
+    m_stateReset=new QState(m_stateMachine);
     //设定属性
     QVariant stateVal;
     stateVal.setValue(VideoConsumerState::NoInput);
-    stateNoInput->assignProperty(this,"state",stateVal);
+    m_stateNoInput->assignProperty(this,"state",stateVal);
     stateVal.setValue(VideoConsumerState::Init);
-    stateInit->assignProperty(this,"state",stateVal);
+    m_stateInit->assignProperty(this,"state",stateVal);
     stateVal.setValue(VideoConsumerState::Reading);
-    stateReading->assignProperty(this,"state",stateVal);
+    m_stateReading->assignProperty(this,"state",stateVal);
     stateVal.setValue(VideoConsumerState::Reset);
-    stateReset->assignProperty(this,"state",stateVal);
+    m_stateReset->assignProperty(this,"state",stateVal);
     //Destroy自己设定
     //设置操作
-    connect(stateInit,&QState::entered,this,&TVideoConsumer::init);
-    connect(stateReading,&QState::entered,this,&TVideoConsumer::read);
-    connect(stateDestroy,&QState::entered,this,&TVideoConsumer::destroy);
-    connect(stateReset,&QState::entered,this,&TVideoConsumer::reset);
+    connect(m_stateInit,&QState::entered,this,&TVideoConsumer::init);
+    connect(m_stateReading,&QState::entered,this,&TVideoConsumer::read);
+    connect(m_stateDestroy,&QState::entered,this,&TVideoConsumer::destroy);
+    connect(m_stateReset,&QState::entered,this,&TVideoConsumer::reset);
     //设置状态转移
-    stateNoInput->addTransition(this,&TVideoConsumer::foundInput,stateInit);
-    stateNoInput->addTransition(this,&TVideoConsumer::turnToDestroy,stateDestroy);
-    stateInit->addTransition(this,&TVideoConsumer::initFinished,stateReading);
-    stateInit->addTransition(this,&TVideoConsumer::turnToDestroy,stateDestroy);
-    stateInit->addTransition(this,&TVideoConsumer::turnToReset,stateReset);
-    stateReading->addTransition(this,&TVideoConsumer::readyToRead,stateReading);
-    stateReading->addTransition(this,&TVideoConsumer::turnToDestroy,stateDestroy);
-    stateReading->addTransition(this,&TVideoConsumer::turnToReset,stateReset);
-    stateReset->addTransition(this,&TVideoConsumer::turnToNoInput,stateNoInput);
+    m_stateNoInput->addTransition(this,&TVideoConsumer::foundInput,m_stateInit);
+    m_stateNoInput->addTransition(this,&TVideoConsumer::turnToDestroy,m_stateDestroy);
+    m_stateInit->addTransition(this,&TVideoConsumer::initFinished,m_stateReading);
+    m_stateInit->addTransition(this,&TVideoConsumer::turnToDestroy,m_stateDestroy);
+    m_stateInit->addTransition(this,&TVideoConsumer::turnToReset,m_stateReset);
+    m_stateReading->addTransition(this,&TVideoConsumer::readyToRead,m_stateReading);
+    m_stateReading->addTransition(this,&TVideoConsumer::turnToDestroy,m_stateDestroy);
+    m_stateReading->addTransition(this,&TVideoConsumer::turnToReset,m_stateReset);
+    m_stateReset->addTransition(this,&TVideoConsumer::turnToNoInput,m_stateNoInput);
     //应用设置
-    stateMachine->setInitialState(stateNoInput);
+    m_stateMachine->setInitialState(m_stateNoInput);
 }
 
 void TVideoConsumer::respondToProducer(int w, int h,qreal fps)
 {
-    width=w;
-    height=h;
-    this->fps=fps;
+    m_width=w;
+    m_height=h;
+    this->m_fps=fps;
     emit foundInput();
 }
 
 void TVideoConsumer::respondToMainDestroy()
 {
     setState(VideoConsumerState::Destroy);
-    isWorking=false;
+    m_isWorking=false;
     emit turnToDestroy();
 }
 
 void TVideoConsumer::respondToMainDisconnect()
 {
-    isWorking=false;
+    m_isWorking=false;
     qDebug()<<"视频消费者:开始断开连接。";
     emit turnToReset();
 }

@@ -3,22 +3,22 @@
 
 #include <QIODevice>
 #include <QObject>
-#include <QReadWriteLock>
+#include <QMutex>
 #include <QWaitCondition>
 #include <QThread>
 class TAVBufferPool : public QIODevice
 {
     Q_OBJECT
 private:
-    bool isWorking;
-    QReadWriteLock lock;
-    QWaitCondition condFull;
-    QWaitCondition condEmpty;
+    bool m_isWorking;
+    QMutex m_lock;
+    QWaitCondition m_condFull;
+    QWaitCondition m_condEmpty;
 
-    qsizetype size;
-    QByteArray buffer;
-    qint64 readPos;//下次从此位置开始读
-    qint64 writePos;//下次从此位置开始写
+    qsizetype m_size;
+    QByteArray m_buffer;
+    qint64 m_readPos;//下次从此位置开始读
+    qint64 m_writePos;//下次从此位置开始写
 protected:
     qint64 readData(char *data, qint64 maxSize)override;
     qint64 writeData(const char *data, qint64 maxSize)override;

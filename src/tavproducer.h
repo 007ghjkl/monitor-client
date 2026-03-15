@@ -20,40 +20,39 @@ enum class AVProducerState{NoInput,Init,Reading,Destroy,Reset};
 class TAVProducer : public QObject
 {
     Q_OBJECT
-    Q_PROPERTY(AVProducerState state MEMBER state READ currentState WRITE setState)
+    Q_PROPERTY(AVProducerState state MEMBER m_state READ currentState WRITE setState)
 private:
-    AVProducerState state;
-    QStateMachine *stateMachine;
-    QState *stateNoInput;
-    QState *stateInit;
-    QState *stateReading;
-    QFinalState *stateDestroy;
-    QState *stateReset;
-    void setState(AVProducerState s){this->state=s;};
+    AVProducerState m_state;
+    QStateMachine *m_stateMachine;
+    QState *m_stateNoInput;
+    QState *m_stateInit;
+    QState *m_stateReading;
+    QFinalState *m_stateDestroy;
+    QState *m_stateReset;
+    void setState(AVProducerState s){this->m_state=s;};
     void initStateMachine();
 
-    QString url;
-    TAVBufferPool *videoBuf;
-    TAVBufferPool *audioBuf;
-    qreal delayTime;
+    QString m_url;
+    TAVBufferPool *m_videoBuf;
+    TAVBufferPool *m_audioBuf;
 
-    bool haveVideo=false,haveAudio=false;
-    int width=0, height=0;
-    qreal fps;
-    AVPixelFormat pixFmt;
-    uint8_t *aVideoFrameData[4]={nullptr};
-    int aVideoFrameLinesize[4];
-    int aVideoFrameSize;
-    bool withResample;
-    bool isWorking;
+    bool m_haveVideo=false,m_haveAudio=false;
+    int m_width=0, m_height=0;
+    qreal m_fps;
+    AVPixelFormat m_pixFmt;
+    uint8_t *m_aVideoFrameData[4]={nullptr};
+    int m_aVideoFrameLinesize[4];
+    int m_aVideoFrameSize;
+    bool m_withResample;
+    bool m_isWorking;
 
-    int videoStreamIdx = -1, audioStreamIdx = -1;
-    AVFormatContext *fmtCtx = nullptr;
-    AVCodecContext *videoDecCtx = nullptr, *audioDecCtx=nullptr;
-    AVPacket* pkt=nullptr;
-    AVFrame* frame=nullptr;
-    SwrContext* swrCtx=nullptr;
-    char errorStr[AV_ERROR_MAX_STRING_SIZE];
+    int m_videoStreamIdx = -1, m_audioStreamIdx = -1;
+    AVFormatContext *m_fmtCtx = nullptr;
+    AVCodecContext *m_videoDecCtx = nullptr, *m_audioDecCtx=nullptr;
+    AVPacket* m_pkt=nullptr;
+    AVFrame* m_frame=nullptr;
+    SwrContext* m_swrCtx=nullptr;
+    char m_errorStr[AV_ERROR_MAX_STRING_SIZE];
     bool openCodecContext(int *streamIdx,AVCodecContext **decCtx, AVFormatContext *fmtCtx, enum AVMediaType type);
 private slots:
     void init();
@@ -63,9 +62,9 @@ private slots:
 public:
     explicit TAVProducer(QObject *parent = nullptr);
     ~TAVProducer();
-    void setBuffers(TAVBufferPool *vb,TAVBufferPool *ab){videoBuf=vb;audioBuf=ab;};
-    auto currentState()const{return state;};
-    void startStateMachine(){stateMachine->start();};
+    void setBuffers(TAVBufferPool *vb,TAVBufferPool *ab){m_videoBuf=vb;m_audioBuf=ab;};
+    auto currentState()const{return m_state;};
+    void startStateMachine(){m_stateMachine->start();};
 public slots:
     void respondToMainURL(QString url);
     void respondToMainDestroy();

@@ -23,53 +23,53 @@ MainWindow::MainWindow(QWidget *parent)
     //     debug<<Qt::hex<<hash[i];
     // }
 
-    videoBuf=new TAVBufferPool;
-    videoBuf->init(50*1024*1024);//50M
-    audioBuf=new TAVBufferPool;
-    audioBuf->init(10*1024*1024);//10M
+    m_videoBuf=new TAVBufferPool;
+    m_videoBuf->init(50*1024*1024);//50M
+    m_audioBuf=new TAVBufferPool;
+    m_audioBuf->init(10*1024*1024);//10M
 
-    avProducerThread=new QThread(this);
-    videoConsumerThread=new QThread(this);
-    audioConsumerThread=new QThread(this);
-    avProducer=new TAVProducer;
-    videoConsumer=new TVideoConsumer;
-    audioConsumer=new TAudioConsumer;
-    avProducer->setBuffers(videoBuf,audioBuf);
-    videoConsumer->setBuffer(videoBuf);
-    audioConsumer->setBuffer(audioBuf);
+    m_avProducerThread=new QThread(this);
+    m_videoConsumerThread=new QThread(this);
+    m_audioConsumerThread=new QThread(this);
+    m_avProducer=new TAVProducer;
+    m_videoConsumer=new TVideoConsumer;
+    m_audioConsumer=new TAudioConsumer;
+    m_avProducer->setBuffers(m_videoBuf,m_audioBuf);
+    m_videoConsumer->setBuffer(m_videoBuf);
+    m_audioConsumer->setBuffer(m_audioBuf);
     //参数设置
-    connect(this,&MainWindow::connectToURL,avProducer,&TAVProducer::respondToMainURL);
-    connect(avProducer,&TAVProducer::foundVideoFormat,videoConsumer,&TVideoConsumer::respondToProducer);
-    connect(avProducer,&TAVProducer::foundAudioFormat,audioConsumer,&TAudioConsumer::respondToProducer);
+    connect(this,&MainWindow::connectToURL,m_avProducer,&TAVProducer::respondToMainURL);
+    connect(m_avProducer,&TAVProducer::foundVideoFormat,m_videoConsumer,&TVideoConsumer::respondToProducer);
+    connect(m_avProducer,&TAVProducer::foundAudioFormat,m_audioConsumer,&TAudioConsumer::respondToProducer);
     //断开连接
-    connect(this,&MainWindow::notifyDisconnect,avProducer,&TAVProducer::respondToMainDisconnect,Qt::DirectConnection);
-    connect(this,&MainWindow::notifyDisconnect,videoConsumer,&TVideoConsumer::respondToMainDisconnect,Qt::DirectConnection);
-    connect(this,&MainWindow::notifyDisconnect,audioConsumer,&TAudioConsumer::respondToMainDisconnect,Qt::DirectConnection);
-    connect(this,&MainWindow::notifyDisconnect,videoBuf,&TAVBufferPool::respondToMainDisconnect,Qt::DirectConnection);
-    connect(this,&MainWindow::notifyDisconnect,audioBuf,&TAVBufferPool::respondToMainDisconnect,Qt::DirectConnection);
+    connect(this,&MainWindow::notifyDisconnect,m_avProducer,&TAVProducer::respondToMainDisconnect,Qt::DirectConnection);
+    connect(this,&MainWindow::notifyDisconnect,m_videoConsumer,&TVideoConsumer::respondToMainDisconnect,Qt::DirectConnection);
+    connect(this,&MainWindow::notifyDisconnect,m_audioConsumer,&TAudioConsumer::respondToMainDisconnect,Qt::DirectConnection);
+    connect(this,&MainWindow::notifyDisconnect,m_videoBuf,&TAVBufferPool::respondToMainDisconnect,Qt::DirectConnection);
+    connect(this,&MainWindow::notifyDisconnect,m_audioBuf,&TAVBufferPool::respondToMainDisconnect,Qt::DirectConnection);
     connect(this,&MainWindow::notifyDisconnect,ui->display,&TVideoDisplay::respondToMainDisconnect,Qt::UniqueConnection);
     //显示
-    connect(videoConsumer,&TVideoConsumer::setDisplaySize,ui->display,&TVideoDisplay::respondToVideoSize,Qt::UniqueConnection);
-    connect(videoConsumer,&TVideoConsumer::sendFrame,ui->display,&TVideoDisplay::displayFrame,Qt::UniqueConnection);
+    connect(m_videoConsumer,&TVideoConsumer::setDisplaySize,ui->display,&TVideoDisplay::respondToVideoSize,Qt::UniqueConnection);
+    connect(m_videoConsumer,&TVideoConsumer::sendFrame,ui->display,&TVideoDisplay::displayFrame,Qt::UniqueConnection);
     //销毁
-    connect(this,&MainWindow::destroyAVBufferPools,videoBuf,&TAVBufferPool::respondToMainDestroy,Qt::DirectConnection);
-    connect(this,&MainWindow::destroyAVBufferPools,audioBuf,&TAVBufferPool::respondToMainDestroy,Qt::DirectConnection);
-    connect(this,&MainWindow::destroyAVProducer,avProducer,&TAVProducer::respondToMainDestroy,Qt::DirectConnection);
-    connect(this,&MainWindow::destroyVideoConsumer,videoConsumer,&TVideoConsumer::respondToMainDestroy,Qt::DirectConnection);
-    connect(this,&MainWindow::destroyAudioConsumer,audioConsumer,&TAudioConsumer::respondToMainDestroy,Qt::DirectConnection);
-    connect(avProducerThread,&QThread::finished,this,[](){qDebug()<<"avProducerThread退出";});
-    connect(audioConsumerThread,&QThread::finished,this,[](){qDebug()<<"audioConsumerThread退出";});
+    connect(this,&MainWindow::destroyAVBufferPools,m_videoBuf,&TAVBufferPool::respondToMainDestroy,Qt::DirectConnection);
+    connect(this,&MainWindow::destroyAVBufferPools,m_audioBuf,&TAVBufferPool::respondToMainDestroy,Qt::DirectConnection);
+    connect(this,&MainWindow::destroyAVProducer,m_avProducer,&TAVProducer::respondToMainDestroy,Qt::DirectConnection);
+    connect(this,&MainWindow::destroyVideoConsumer,m_videoConsumer,&TVideoConsumer::respondToMainDestroy,Qt::DirectConnection);
+    connect(this,&MainWindow::destroyAudioConsumer,m_audioConsumer,&TAudioConsumer::respondToMainDestroy,Qt::DirectConnection);
+    connect(m_avProducerThread,&QThread::finished,this,[](){qDebug()<<"avProducerThread退出";});
+    connect(m_audioConsumerThread,&QThread::finished,this,[](){qDebug()<<"audioConsumerThread退出";});
 
-    avProducer->moveToThread(avProducerThread);
-    videoConsumer->moveToThread(videoConsumerThread);
-    audioConsumer->moveToThread(audioConsumerThread);
+    m_avProducer->moveToThread(m_avProducerThread);
+    m_videoConsumer->moveToThread(m_videoConsumerThread);
+    m_audioConsumer->moveToThread(m_audioConsumerThread);
 
-    avProducerThread->start();
-    videoConsumerThread->start();
-    audioConsumerThread->start();
-    avProducer->startStateMachine();
-    videoConsumer->startStateMachine();
-    audioConsumer->startStateMachine();
+    m_avProducerThread->start();
+    m_videoConsumerThread->start();
+    m_audioConsumerThread->start();
+    m_avProducer->startStateMachine();
+    m_videoConsumer->startStateMachine();
+    m_audioConsumer->startStateMachine();
 }
 
 MainWindow::~MainWindow()
@@ -87,19 +87,19 @@ void MainWindow::closeEvent(QCloseEvent *event)
     QThread::usleep(50);
     emit destroyAVBufferPools();
 
-    avProducer->deleteLater();
-    videoConsumer->deleteLater();
-    audioConsumer->deleteLater();
-    avProducerThread->quit();
-    videoConsumerThread->quit();
-    audioConsumerThread->quit();
+    m_avProducer->deleteLater();
+    m_videoConsumer->deleteLater();
+    m_audioConsumer->deleteLater();
+    m_avProducerThread->quit();
+    m_videoConsumerThread->quit();
+    m_audioConsumerThread->quit();
 
-    avProducerThread->wait(3000);
-    videoConsumerThread->wait(3000);
-    audioConsumerThread->wait(3000);
+    m_avProducerThread->wait(3000);
+    m_videoConsumerThread->wait(3000);
+    m_audioConsumerThread->wait(3000);
 
-    videoBuf->deleteLater();
-    audioBuf->deleteLater();
+    m_videoBuf->deleteLater();
+    m_audioBuf->deleteLater();
 
     event->accept();
 }
@@ -110,9 +110,9 @@ void MainWindow::doConnectToUrl()
     //"E:/Tools/GICutscenes/output/genshin.mp4"
     //"rtsp://192.168.232.129:554/live/stream"
     //"rtsp://admin:zyn050504@192.168.1.140:554/stream1"
-    // QString url=QInputDialog::getText(this,"输入URL","URL",QLineEdit::Normal,"E:/Tools/GICutscenes/output/genshin.mp4",&ok);
+    QString url=QInputDialog::getText(this,"输入URL","URL",QLineEdit::Normal,"/home/rainbow/Documents/study/av/genshin.mp4",&ok);
     // QString url=QInputDialog::getText(this,"输入URL","URL",QLineEdit::Normal,"rtsp://192.168.232.129:554/live/stream",&ok);
-    QString url=QInputDialog::getText(this,"输入URL","URL",QLineEdit::Normal,"rtsp://admin:zyn050504@192.168.1.140:554/stream1",&ok);
+    // QString url=QInputDialog::getText(this,"输入URL","URL",QLineEdit::Normal,"rtsp://admin:zyn050504@192.168.1.140:554/stream1",&ok);
     if(ok)
     {
         emit connectToURL(url);

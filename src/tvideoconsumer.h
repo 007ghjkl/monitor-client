@@ -10,32 +10,32 @@ enum class VideoConsumerState{NoInput,Init,Reading,Destroy,Reset};
 class TVideoConsumer : public QObject
 {
     Q_OBJECT
-    Q_PROPERTY(VideoConsumerState state MEMBER state READ currentState WRITE setState)
+    Q_PROPERTY(VideoConsumerState state MEMBER m_state READ currentState WRITE setState)
 public:
     explicit TVideoConsumer(QObject *parent = nullptr);
-    auto currentState()const{return state;};
+    auto currentState()const{return m_state;};
 
-    void startStateMachine(){stateMachine->start();};
-    void setBuffer(TAVBufferPool *buf){buffer=buf;};
+    void startStateMachine(){m_stateMachine->start();};
+    void setBuffer(TAVBufferPool *buf){m_buffer=buf;};
 private:
-    VideoConsumerState state;
-    QStateMachine *stateMachine;
-    QState *stateNoInput;
-    QState *stateInit;
-    QState *stateReading;
-    QFinalState *stateDestroy;
-    QState *stateReset;
-    void setState(VideoConsumerState s){this->state=s;};
+    VideoConsumerState m_state;
+    QStateMachine *m_stateMachine;
+    QState *m_stateNoInput;
+    QState *m_stateInit;
+    QState *m_stateReading;
+    QFinalState *m_stateDestroy;
+    QState *m_stateReset;
+    void setState(VideoConsumerState s){this->m_state=s;};
     void initStateMachine();
 
-    QTimer *baseTimer;
+    QTimer *m_baseTimer;
 
-    int width;
-    int height;
-    qreal fps;
-    TAVBufferPool *buffer;
-    bool isWorking;//暂时
-    QByteArray data;
+    int m_width;
+    int m_height;
+    qreal m_fps;
+    TAVBufferPool *m_buffer;
+    bool m_isWorking;//暂时
+    QByteArray m_data;
 
     void init();
     void read();

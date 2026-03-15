@@ -16,23 +16,23 @@ enum class AudioConsumerState{NoInput,Init,Reading,Destroy,Reset};
 class TAudioConsumer : public QObject
 {
     Q_OBJECT
-    Q_PROPERTY(AudioConsumerState state MEMBER state READ currentState WRITE setState)
+    Q_PROPERTY(AudioConsumerState state MEMBER m_state READ currentState WRITE setState)
 private:
-    AudioConsumerState state;
-    QStateMachine *stateMachine;
-    QState *stateNoInput;
-    QState *stateInit;
-    QState *stateReading;
-    QFinalState *stateDestroy;
-    QState *stateReset;
-    void setState(AudioConsumerState s){this->state=s;};
+    AudioConsumerState m_state;
+    QStateMachine *m_stateMachine;
+    QState *m_stateNoInput;
+    QState *m_stateInit;
+    QState *m_stateReading;
+    QFinalState *m_stateDestroy;
+    QState *m_stateReset;
+    void setState(AudioConsumerState s){this->m_state=s;};
     void initStateMachine();
 
-    TAVBufferPool *buffer;
-    qreal delayTime;
+    TAVBufferPool *m_buffer;
+    qreal m_delayTime;
 
-    QAudioFormat format;
-    QAudioSink *player;
+    QAudioFormat m_format;
+    QAudioSink *m_player;
 
 private slots:
     void preInit();
@@ -43,9 +43,9 @@ private slots:
 public:
     explicit TAudioConsumer(QObject *parent = nullptr);
     ~TAudioConsumer();
-    void setBuffer(TAVBufferPool *buf){buffer=buf;};
-    auto currentState()const{return state;};
-    void startStateMachine(){stateMachine->start();};
+    void setBuffer(TAVBufferPool *buf){m_buffer=buf;};
+    auto currentState()const{return m_state;};
+    void startStateMachine(){m_stateMachine->start();};
 public slots:
     void respondToProducer(QAudioFormat f);
     void respondToMainDestroy();

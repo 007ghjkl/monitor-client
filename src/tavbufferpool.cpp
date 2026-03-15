@@ -3,77 +3,77 @@
 
 qint64 TAVBufferPool::readData(char *data, qint64 maxSize)
 {
-    if(isWorking==false)
+    if(m_isWorking==false)
         return 0;
 
-    lock.lockForRead();
+    m_lock.lock();
     //QAudioSink专用检测
-    int available=(readPos<=writePos)?(writePos-readPos):(writePos-readPos+size);
+    int available=(m_readPos<=m_writePos)?(m_writePos-m_readPos):(m_writePos-m_readPos+m_size);
     while(available<maxSize)
     {//缓冲区空
         qDebug()<<this<<"缓冲区空";
-        condEmpty.wait(&lock);
-        available=(readPos<=writePos)?(writePos-readPos):(writePos-readPos+size);
-        if(isWorking==false)
+        m_condEmpty.wait(&m_lock);
+        available=(m_readPos<=m_writePos)?(m_writePos-m_readPos):(m_writePos-m_readPos+m_size);
+        if(m_isWorking==false)
             break;
     }
-    bool reachEnd=(readPos+maxSize>size-1);
+    bool reachEnd=(m_readPos+maxSize>m_size-1);
     if(reachEnd)
     {
-        memcpy(data,buffer.data()+readPos,size-readPos);
-        memcpy(data+size-readPos,buffer.data(),maxSize-(size-readPos));
-        readPos=maxSize-(size-readPos);
+        memcpy(data,m_buffer.data()+m_readPos,m_size-m_readPos);
+        memcpy(data+m_size-m_readPos,m_buffer.data(),maxSize-(m_size-m_readPos));
+        m_readPos=maxSize-(m_size-m_readPos);
     }
     else
     {
-        memcpy(data,buffer.data()+readPos,maxSize);
-        readPos+=maxSize;
+        memcpy(data,m_buffer.data()+m_readPos,maxSize);
+        m_readPos+=maxSize;
     }
     qDebug()<<this<<"消费数据:"<<maxSize;
-    available=(readPos<=writePos)?(writePos-readPos):(writePos-readPos+size);
+    available=(m_readPos<=m_writePos)?(m_writePos-m_readPos):(m_writePos-m_readPos+m_size);
     while(available<maxSize)
     {//缓冲区空
         qDebug()<<this<<"缓冲区空";
-        condEmpty.wait(&lock);
-        available=(readPos<=writePos)?(writePos-readPos):(writePos-readPos+size);
-        if(isWorking==false)
+        m_condEmpty.wait(&m_lock);
+        available=(m_readPos<=m_writePos)?(m_writePos-m_readPos):(m_writePos-m_readPos+m_size);
+        if(m_isWorking==false)
             break;
     }
-    lock.unlock();
-    condFull.wakeAll();
+    m_lock.unlock();
+    m_condFull.wakeAll();
     return maxSize;
 }
 
 qint64 TAVBufferPool::writeData(const char *data, qint64 maxSize)
 {
-    if(isWorking==false)
+    if(m_isWorking==false)
         return 0;
 
-    lock.lockForWrite();
-    bool reachEnd=(writePos+maxSize>size-1);
+    m_lock.lock();
+    bool reachEnd=(m_writePos+maxSize>m_size-1);
     if(reachEnd)
     {
-        memcpy(buffer.data()+writePos,data,size-writePos);
-        memcpy(buffer.data(),data+size-writePos,maxSize-(size-writePos));
-        writePos+=maxSize-size;
+        memcpy(m_buffer.data()+m_writePos,data,m_size-m_writePos);
+        memcpy(m_buffer.data(),data+m_size-m_writePos,maxSize-(m_size-m_writePos));
+        m_writePos+=maxSize-m_size;
     }
     else
     {
-        memcpy(buffer.data()+writePos,data,maxSize);
-        writePos+=maxSize;
+        memcpy(m_buffer.data()+m_writePos,data,maxSize);
+        m_writePos+=maxSize;
     }
     qDebug()<<this<<"生产数据:"<<maxSize;
-    int available=(writePos<=readPos)?(readPos-writePos):(readPos-writePos+size);
+    int available=(m_writePos<=m_readPos)?(m_readPos-m_writePos):(m_readPos-m_writePos+m_size);
     while(available<maxSize)
     {//缓冲区满
         qDebug()<<this<<"缓冲区满";
-        condFull.wait(&lock);
-        available=(writePos<=readPos)?(readPos-writePos):(readPos-writePos+size);
-        if(isWorking==false)
+        m_condFull.wait(&m_lock);
+        available=(m_writePos<=m_readPos)?(m_readPos-m_writePos):(m_readPos-m_writePos+m_size);
+        if(m_isWorking==false)
             break;
     }
-    lock.unlock();
-    condEmpty.wakeAll();
+    m_lock.unlock();
+    m_condEmpty.wakeAll();
 
     emit readyRead();
     emit bytesWritten(maxSize);
@@ -94,18 +94,18 @@ TAVBufferPool::~TAVBufferPool()
 qint64 TAVBufferPool::bytesAvailable() const
 {
     qint64 ret=QIODevice::bytesAvailable();    
-    ret+=(writePos-readPos>0)?(writePos-readPos):(size-readPos+writePos);
+    ret+=(m_writePos-m_readPos>0)?(m_writePos-m_readPos):(m_size-m_readPos+m_writePos);
     // qDebug()<<this<<"可读大小:"<<ret;
     return ret;
 }
 
 void TAVBufferPool::init(qsizetype total)
 {
-    isWorking=true;
-    readPos=0;
-    writePos=0;
-    size=total;
-    buffer.resize(size);
+    m_isWorking=true;
+    m_readPos=0;
+    m_writePos=0;
+    m_size=total;
+    m_buffer.resize(m_size);
 }
 
 void TAVBufferPool::produce(const char *data, qint64 len)
@@ -115,30 +115,30 @@ void TAVBufferPool::produce(const char *data, qint64 len)
 
 void TAVBufferPool::sleep(int milisecond)
 {
-    QReadLocker locker(&lock);
-    condEmpty.wait(&lock,milisecond);
+    QMutexLocker locker(&m_lock);
+    m_condEmpty.wait(&m_lock,milisecond);
     qDebug()<<this<<"睡醒了。";
 }
 
 void TAVBufferPool::respondToMainDestroy()
 {
-    isWorking=false;
+    m_isWorking=false;
     // qDebug()<<"avBufs:"<<isWorking;
-    condEmpty.wakeAll();
-    condFull.wakeAll();
+    m_condEmpty.wakeAll();
+    m_condFull.wakeAll();
 }
 
 void TAVBufferPool::respondToMainDisconnect()
 {
-    isWorking=false;
-    condEmpty.wakeAll();
-    condFull.wakeAll();
+    m_isWorking=false;
+    m_condEmpty.wakeAll();
+    m_condFull.wakeAll();
     QThread::usleep(100);
-    condEmpty.wakeAll();
-    condFull.wakeAll();
-    buffer.clear();
-    buffer.resize(size);
-    readPos=writePos=0;
+    m_condEmpty.wakeAll();
+    m_condFull.wakeAll();
+    m_buffer.clear();
+    m_buffer.resize(m_size);
+    m_readPos=m_writePos=0;
     QThread::usleep(100);
-    isWorking=true;
+    m_isWorking=true;
 }

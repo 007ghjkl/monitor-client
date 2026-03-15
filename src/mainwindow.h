@@ -32,13 +32,13 @@ private slots:
 private:
     Ui::MainWindow *ui;
     void initUiConnections();
-    QThread *avProducerThread;
-    QThread *videoConsumerThread;
-    QThread *audioConsumerThread;
-    TAVProducer *avProducer;
-    TVideoConsumer *videoConsumer;
-    TAudioConsumer *audioConsumer;
-    TAVBufferPool *videoBuf,*audioBuf;
+    QThread *m_avProducerThread;
+    QThread *m_videoConsumerThread;
+    QThread *m_audioConsumerThread;
+    TAVProducer *m_avProducer;
+    TVideoConsumer *m_videoConsumer;
+    TAudioConsumer *m_audioConsumer;
+    TAVBufferPool *m_videoBuf,*m_audioBuf;
 
     void closeEvent(QCloseEvent* event) override;
 signals:

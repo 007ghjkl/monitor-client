@@ -60,57 +60,57 @@ void TAVProducer::init()
     //初始化网络流
     avformat_network_init();
     //打开输入
-    if(avformat_open_input(&fmtCtx,url.toLocal8Bit().constData(),nullptr,&options)<0)
+    if(avformat_open_input(&m_fmtCtx,m_url.toLocal8Bit().constData(),nullptr,&options)<0)
     {
-        qDebug()<<"打开"<<url<<"时出错!";
+        qDebug()<<"打开"<<m_url<<"时出错!";
         QCoreApplication::exit(-1);
     }
     av_dict_free(&options);
     //检索视频流信息
-    if(avformat_find_stream_info(fmtCtx,nullptr)<0)
+    if(avformat_find_stream_info(m_fmtCtx,nullptr)<0)
     {
         qDebug()<<"检索视频流信息时出错!";
         QCoreApplication::exit(-1);
     }
-    haveVideo=(videoBuf!=nullptr);
-    haveAudio=(audioBuf!=nullptr);
+    m_haveVideo=(m_videoBuf!=nullptr);
+    m_haveAudio=(m_audioBuf!=nullptr);
     //初始化视频解码器
-    if(openCodecContext(&videoStreamIdx,&videoDecCtx,fmtCtx,AVMEDIA_TYPE_VIDEO))
+    if(openCodecContext(&m_videoStreamIdx,&m_videoDecCtx,m_fmtCtx,AVMEDIA_TYPE_VIDEO))
     {
-        width=videoDecCtx->width;
-        height=videoDecCtx->height;
-        fps=(qreal)(videoDecCtx->framerate.num)/(videoDecCtx->framerate.den);
-        pixFmt=videoDecCtx->pix_fmt;
-        aVideoFrameSize=av_image_alloc(aVideoFrameData,aVideoFrameLinesize,width,height,pixFmt,1);
-        if(aVideoFrameSize<0)
+        m_width=m_videoDecCtx->width;
+        m_height=m_videoDecCtx->height;
+        m_fps=(qreal)(m_videoDecCtx->framerate.num)/(m_videoDecCtx->framerate.den);
+        m_pixFmt=m_videoDecCtx->pix_fmt;
+        m_aVideoFrameSize=av_image_alloc(m_aVideoFrameData,m_aVideoFrameLinesize,m_width,m_height,m_pixFmt,1);
+        if(m_aVideoFrameSize<0)
         {
             qDebug()<<"分配一帧视频的内存对齐时出错!";
             QCoreApplication::exit(-1);
         }
-        if(haveVideo)
+        if(m_haveVideo)
         {
-            emit foundVideoFormat(width,height,fps);
+            emit foundVideoFormat(m_width,m_height,m_fps);
         }
     }
     //初始化音频解码器
-    if(openCodecContext(&audioStreamIdx,&audioDecCtx,fmtCtx,AVMEDIA_TYPE_AUDIO))
+    if(openCodecContext(&m_audioStreamIdx,&m_audioDecCtx,m_fmtCtx,AVMEDIA_TYPE_AUDIO))
     {
-        withResample=true;
+        m_withResample=true;
         QAudioFormat format;
-        swrCtx=swr_alloc();
-        if(!swrCtx)
+        m_swrCtx=swr_alloc();
+        if(!m_swrCtx)
         {
             qDebug()<<"分配SwrContext空间时出错！";
             QCoreApplication::exit(-1);
         }
         // qDebug()<<"每帧采样点数:"<<audioDecCtx->frame_size;
         //采样率
-        format.setSampleRate(audioDecCtx->sample_rate);
-        av_opt_set_int(swrCtx, "in_sample_rate",audioDecCtx->sample_rate,0);
-        av_opt_set_int(swrCtx, "out_sample_rate",audioDecCtx->sample_rate,0);
-        // qDebug()<<"采样率："<<audioDecCtx->sample_rate;
+        format.setSampleRate(m_audioDecCtx->sample_rate);
+        av_opt_set_int(m_swrCtx, "in_sample_rate",m_audioDecCtx->sample_rate,0);
+        av_opt_set_int(m_swrCtx, "out_sample_rate",m_audioDecCtx->sample_rate,0);
+        // qDebug()<<"采样率："<<m_audioDecCtx->sample_rate;
         //声道数
-        int channelCount=audioDecCtx->ch_layout.nb_channels;
+        int channelCount=m_audioDecCtx->ch_layout.nb_channels;
         switch(channelCount)
         {
         case 1:
@@ -123,67 +123,67 @@ void TAVProducer::init()
             format.setChannelConfig(QAudioFormat::ChannelConfigUnknown);
             break;
         }
-        av_opt_set_chlayout(swrCtx,"in_chlayout",&(audioDecCtx->ch_layout),0);
-        av_opt_set_chlayout(swrCtx,"out_chlayout",&(audioDecCtx->ch_layout),0);
-        // qDebug()<<"声道数："<<audioDecCtx->ch_layout.nb_channels;
+        av_opt_set_chlayout(m_swrCtx,"in_chlayout",&(m_audioDecCtx->ch_layout),0);
+        av_opt_set_chlayout(m_swrCtx,"out_chlayout",&(m_audioDecCtx->ch_layout),0);
+        // qDebug()<<"声道数："<<m_audioDecCtx->ch_layout.nb_channels;
         //采样格式
-        auto raw=audioDecCtx->sample_fmt;
+        auto raw=m_audioDecCtx->sample_fmt;
         // qDebug()<<"输入采样格式："<<raw;
-        av_opt_set_sample_fmt(swrCtx,"in_sample_fmt",raw,0);
+        av_opt_set_sample_fmt(m_swrCtx,"in_sample_fmt",raw,0);
         if(raw==AV_SAMPLE_FMT_U8||raw==AV_SAMPLE_FMT_U8P)
         {
             format.setSampleFormat(QAudioFormat::UInt8);
-            av_opt_set_sample_fmt(swrCtx,"out_sample_fmt",AV_SAMPLE_FMT_U8,0);
+            av_opt_set_sample_fmt(m_swrCtx,"out_sample_fmt",AV_SAMPLE_FMT_U8,0);
         }
         else if(raw==AV_SAMPLE_FMT_S16||raw==AV_SAMPLE_FMT_S16P)
         {
             format.setSampleFormat(QAudioFormat::Int16);
-            av_opt_set_sample_fmt(swrCtx,"out_sample_fmt",AV_SAMPLE_FMT_S16,0);
+            av_opt_set_sample_fmt(m_swrCtx,"out_sample_fmt",AV_SAMPLE_FMT_S16,0);
         }
         else if(raw==AV_SAMPLE_FMT_S32||raw==AV_SAMPLE_FMT_S32P||raw==AV_SAMPLE_FMT_S64||raw==AV_SAMPLE_FMT_S64P)
         {
             format.setSampleFormat(QAudioFormat::Int32);
-            av_opt_set_sample_fmt(swrCtx,"out_sample_fmt",AV_SAMPLE_FMT_S32,0);
+            av_opt_set_sample_fmt(m_swrCtx,"out_sample_fmt",AV_SAMPLE_FMT_S32,0);
         }
         else if(raw==AV_SAMPLE_FMT_FLT||raw==AV_SAMPLE_FMT_FLTP||raw==AV_SAMPLE_FMT_DBL||raw==AV_SAMPLE_FMT_DBLP)
         {
             format.setSampleFormat(QAudioFormat::Float);
-            av_opt_set_sample_fmt(swrCtx,"out_sample_fmt",AV_SAMPLE_FMT_FLT,0);
+            av_opt_set_sample_fmt(m_swrCtx,"out_sample_fmt",AV_SAMPLE_FMT_FLT,0);
         }
         if(raw==AV_SAMPLE_FMT_U8||raw==AV_SAMPLE_FMT_S16||raw==AV_SAMPLE_FMT_S32||raw==AV_SAMPLE_FMT_FLT)
         {
-            withResample=false;
+            m_withResample=false;
         }
         // qDebug()<<"输出采样格式："<<format.sampleFormat();
-        if(swr_init(swrCtx)<0)
+        if(swr_init(m_swrCtx)<0)
         {
             qDebug()<<"SwrContext初始化时出错！";
             QCoreApplication::exit(-1);
         }
-        if(haveAudio)
+        if(m_haveAudio)
         {
             emit foundAudioFormat(format);
         }
 
     }
     //打印输入流信息
-    av_dump_format(fmtCtx,0,url.toLocal8Bit().constData(),0);
+    av_dump_format(m_fmtCtx,0,m_url.toLocal8Bit().constData(),0);
     //分配AVPacket和AVFrame空间
-    pkt=av_packet_alloc();
-    if(!pkt)
+    m_pkt=av_packet_alloc();
+    if(!m_pkt)
     {
         qDebug()<<"分配AVPacket空间时出错！";
         QCoreApplication::exit(-1);
     }
-    frame=av_frame_alloc();
-    if(!frame)
+    m_frame=av_frame_alloc();
+    if(!m_frame)
     {
         qDebug()<<"分配AVFrame空间时出错！";
         QCoreApplication::exit(-1);
     }
     //调试部分
     qDebug()<<"生产者:初始化完成。";
-    isWorking=true;
+    m_isWorking=true;
     emit initFinished();
     // qDebug()<<"生产者init()耗时"<<timer.elapsed();
 }
@@ -192,34 +192,34 @@ void TAVProducer::read()
 {
     int ret=0;
     int index;
-    if(av_read_frame(fmtCtx,pkt)>=0)
+    if(av_read_frame(m_fmtCtx,m_pkt)>=0)
     {
-        index=pkt->stream_index;
+        index=m_pkt->stream_index;
         //AVPacket->解码器
-        if(index==videoStreamIdx)
+        if(index==m_videoStreamIdx)
         {
-            ret=avcodec_send_packet(videoDecCtx,pkt);
+            ret=avcodec_send_packet(m_videoDecCtx,m_pkt);
         }
-        else if(index==audioStreamIdx)
+        else if(index==m_audioStreamIdx)
         {
-            ret=avcodec_send_packet(audioDecCtx,pkt);
+            ret=avcodec_send_packet(m_audioDecCtx,m_pkt);
         }
         if(ret<0)
         {
-            av_make_error_string(errorStr,AV_ERROR_MAX_STRING_SIZE,ret);
-            qDebug()<<"将AVPacket包传入解码器时出现错误:"<<errorStr;
+            av_make_error_string(m_errorStr,AV_ERROR_MAX_STRING_SIZE,ret);
+            qDebug()<<"将AVPacket包传入解码器时出现错误:"<<m_errorStr;
         }
-        av_packet_unref(pkt);
+        av_packet_unref(m_pkt);
         //解码器->AVFrame
         while(ret>=0)
         {
-            if(index==videoStreamIdx)
+            if(index==m_videoStreamIdx)
             {
-                ret=avcodec_receive_frame(videoDecCtx,frame);
+                ret=avcodec_receive_frame(m_videoDecCtx,m_frame);
             }
-            else if(index==audioStreamIdx)
+            else if(index==m_audioStreamIdx)
             {
-                ret=avcodec_receive_frame(audioDecCtx,frame);
+                ret=avcodec_receive_frame(m_audioDecCtx,m_frame);
             }
             if (ret == AVERROR_EOF || ret == AVERROR(EAGAIN))
             {//本包已结束
@@ -227,31 +227,31 @@ void TAVProducer::read()
             }
             if(ret<0)
             {
-                av_make_error_string(errorStr,AV_ERROR_MAX_STRING_SIZE,ret);
-                qDebug()<<"将解码器输出传入AVFrame帧时出现错误:"<<errorStr;
+                av_make_error_string(m_errorStr,AV_ERROR_MAX_STRING_SIZE,ret);
+                qDebug()<<"将解码器输出传入AVFrame帧时出现错误:"<<m_errorStr;
             }
             //写入数据
-            if(index==videoStreamIdx)
+            if(index==m_videoStreamIdx)
             {
-                if(haveVideo)
+                if(m_haveVideo)
                 {
-                    av_image_copy(aVideoFrameData,aVideoFrameLinesize,frame->data,frame->linesize,pixFmt,width,height);
-                    videoBuf->produce((const char*)(aVideoFrameData[0]),aVideoFrameSize);
+                    av_image_copy(m_aVideoFrameData,m_aVideoFrameLinesize,m_frame->data,m_frame->linesize,m_pixFmt,m_width,m_height);
+                    m_videoBuf->produce((const char*)(m_aVideoFrameData[0]),m_aVideoFrameSize);
                 }
             }
-            else if(index==audioStreamIdx)
+            else if(index==m_audioStreamIdx)
             {
-                if(haveAudio)
+                if(m_haveAudio)
                 {
                     AVFrame* aFrame=nullptr;
                     // withResample=true;
-                    if(withResample)
+                    if(m_withResample)
                     {
                         aFrame=av_frame_alloc();
-                        av_opt_get_int(swrCtx,"out_sample_rate",0,(int64_t*)(&(aFrame->sample_rate)));
-                        av_opt_get_chlayout(swrCtx,"out_chlayout",0,&(aFrame->ch_layout));
-                        av_opt_get_sample_fmt(swrCtx,"out_sample_fmt",0,(AVSampleFormat*)(&(aFrame->format)));
-                        ret=swr_convert_frame(swrCtx,aFrame,frame);
+                        av_opt_get_int(m_swrCtx,"out_sample_rate",0,(int64_t*)(&(aFrame->sample_rate)));
+                        av_opt_get_chlayout(m_swrCtx,"out_chlayout",0,&(aFrame->ch_layout));
+                        av_opt_get_sample_fmt(m_swrCtx,"out_sample_fmt",0,(AVSampleFormat*)(&(aFrame->format)));
+                        ret=swr_convert_frame(m_swrCtx,aFrame,m_frame);
                         if(ret!=0)
                         {
                             qDebug()<<"重采样AVFrame时出错！";
@@ -264,11 +264,11 @@ void TAVProducer::read()
                         // {
                         //     qDebug()<<"设置引用计数时出错!"<<ret;
                         // }
-                        aFrame=frame;
+                        aFrame=m_frame;
                     }
                     qsizetype lineSize=aFrame->nb_samples*av_get_bytes_per_sample(static_cast<AVSampleFormat>(aFrame->format))*aFrame->ch_layout.nb_channels;
-                    audioBuf->produce((const char*)(aFrame->extended_data[0]),lineSize);//线程安全地写
-                    if(withResample)
+                    m_audioBuf->produce((const char*)(aFrame->extended_data[0]),lineSize);//线程安全地写
+                    if(m_withResample)
                     {
                         av_frame_free(&aFrame);
                     }
@@ -277,7 +277,7 @@ void TAVProducer::read()
             // av_frame_unref(frame);
         }
     }
-    if(isWorking)
+    if(m_isWorking)
     {
         emit readyToRead();
     }
@@ -287,43 +287,43 @@ void TAVProducer::destroy()
 {//确保进入最终状态
     qDebug()<<"生产者:开始销毁...";
 
-    avformat_close_input(&fmtCtx);
-    av_packet_free(&pkt);
-    av_frame_free(&frame);
-    avcodec_free_context(&videoDecCtx);
-    if(aVideoFrameData[0])
+    avformat_close_input(&m_fmtCtx);
+    av_packet_free(&m_pkt);
+    av_frame_free(&m_frame);
+    avcodec_free_context(&m_videoDecCtx);
+    if(m_aVideoFrameData[0])
     {
-        av_freep(&aVideoFrameData[0]);
+        av_freep(&m_aVideoFrameData[0]);
     }
-    avcodec_free_context(&audioDecCtx);
-    swr_free(&swrCtx);
+    avcodec_free_context(&m_audioDecCtx);
+    swr_free(&m_swrCtx);
 
-    if(videoBuf)
+    if(m_videoBuf)
     {
         // videoBuf->close();
     }
-    if(audioBuf)
+    if(m_audioBuf)
     {
         // audioBuf->close();
     }
 
-    stateMachine->stop();
+    m_stateMachine->stop();
 }
 
 void TAVProducer::reset()
 {
-    avformat_close_input(&fmtCtx);
-    av_packet_free(&pkt);
-    av_frame_free(&frame);
-    avcodec_free_context(&videoDecCtx);
-    if(aVideoFrameData[0])
+    avformat_close_input(&m_fmtCtx);
+    av_packet_free(&m_pkt);
+    av_frame_free(&m_frame);
+    avcodec_free_context(&m_videoDecCtx);
+    if(m_aVideoFrameData[0])
     {
-        av_freep(&aVideoFrameData[0]);
+        av_freep(&m_aVideoFrameData[0]);
     }
-    avcodec_free_context(&audioDecCtx);
-    swr_free(&swrCtx);
+    avcodec_free_context(&m_audioDecCtx);
+    swr_free(&m_swrCtx);
     qDebug()<<"生产者:异步重置完成。";
-    if(url.isNull())
+    if(m_url.isNull())
     {
         emit turnToNoInput();
     }
@@ -342,47 +342,47 @@ TAVProducer::~TAVProducer()
 
 void TAVProducer::initStateMachine()
 {
-    stateMachine=new QStateMachine(this);
-    stateNoInput=new QState(stateMachine);
-    stateInit=new QState(stateMachine);
-    stateReading=new QState(stateMachine);
-    stateDestroy=new QFinalState(stateMachine);
-    stateReset=new QState(stateMachine);
+    m_stateMachine=new QStateMachine(this);
+    m_stateNoInput=new QState(m_stateMachine);
+    m_stateInit=new QState(m_stateMachine);
+    m_stateReading=new QState(m_stateMachine);
+    m_stateDestroy=new QFinalState(m_stateMachine);
+    m_stateReset=new QState(m_stateMachine);
     //设定属性
     QVariant stateVal;
     stateVal.setValue(AVProducerState::NoInput);
-    stateNoInput->assignProperty(this,"state",stateVal);
+    m_stateNoInput->assignProperty(this,"state",stateVal);
     stateVal.setValue(AVProducerState::Init);
-    stateInit->assignProperty(this,"state",stateVal);
+    m_stateInit->assignProperty(this,"state",stateVal);
     stateVal.setValue(AVProducerState::Reading);
-    stateReading->assignProperty(this,"state",stateVal);
+    m_stateReading->assignProperty(this,"state",stateVal);
     stateVal.setValue(AVProducerState::Reset);
-    stateReset->assignProperty(this,"state",stateVal);
+    m_stateReset->assignProperty(this,"state",stateVal);
     //Destroy要自己设置属性
     //设置操作
-    connect(stateInit,&QState::entered,this,&TAVProducer::init);
-    connect(stateReading,&QState::entered,this,&TAVProducer::read);
-    connect(stateDestroy,&QFinalState::entered,this,&TAVProducer::destroy);
-    connect(stateReset,&QState::entered,this,&TAVProducer::reset);
+    connect(m_stateInit,&QState::entered,this,&TAVProducer::init);
+    connect(m_stateReading,&QState::entered,this,&TAVProducer::read);
+    connect(m_stateDestroy,&QFinalState::entered,this,&TAVProducer::destroy);
+    connect(m_stateReset,&QState::entered,this,&TAVProducer::reset);
     //设置状态转移
-    stateNoInput->addTransition(this,&TAVProducer::foundInput,stateInit);
-    stateNoInput->addTransition(this,&TAVProducer::turnToDestroy,stateDestroy);
-    stateInit->addTransition(this,&TAVProducer::initFinished,stateReading);
-    stateInit->addTransition(this,&TAVProducer::turnToDestroy,stateDestroy);
-    stateInit->addTransition(this,&TAVProducer::turnToReset,stateReset);
-    stateReading->addTransition(this,&TAVProducer::readyToRead,stateReading);
-    stateReading->addTransition(this,&TAVProducer::turnToDestroy,stateDestroy);
-    stateReading->addTransition(this,&TAVProducer::turnToReset,stateReset);
-    stateReset->addTransition(this,&TAVProducer::turnToNoInput,stateNoInput);
+    m_stateNoInput->addTransition(this,&TAVProducer::foundInput,m_stateInit);
+    m_stateNoInput->addTransition(this,&TAVProducer::turnToDestroy,m_stateDestroy);
+    m_stateInit->addTransition(this,&TAVProducer::initFinished,m_stateReading);
+    m_stateInit->addTransition(this,&TAVProducer::turnToDestroy,m_stateDestroy);
+    m_stateInit->addTransition(this,&TAVProducer::turnToReset,m_stateReset);
+    m_stateReading->addTransition(this,&TAVProducer::readyToRead,m_stateReading);
+    m_stateReading->addTransition(this,&TAVProducer::turnToDestroy,m_stateDestroy);
+    m_stateReading->addTransition(this,&TAVProducer::turnToReset,m_stateReset);
+    m_stateReset->addTransition(this,&TAVProducer::turnToNoInput,m_stateNoInput);
     //应用设置
-    stateMachine->setInitialState(stateNoInput);
+    m_stateMachine->setInitialState(m_stateNoInput);
 }
 
 void TAVProducer::respondToMainURL(QString url)
 {
     if(currentState()==AVProducerState::NoInput)
     {
-        this->url=url;
+        this->m_url=url;
         emit foundInput();
     }
 }
@@ -390,14 +390,14 @@ void TAVProducer::respondToMainURL(QString url)
 void TAVProducer::respondToMainDestroy()
 {
     setState(AVProducerState::Destroy);
-    isWorking=false;
+    m_isWorking=false;
     emit turnToDestroy();
 }
 
 void TAVProducer::respondToMainDisconnect()
 {
-    isWorking=false;
-    url.clear();
+    m_isWorking=false;
+    m_url.clear();
     qDebug()<<"生产者:开始断开连接。";
     emit turnToReset();
 }
