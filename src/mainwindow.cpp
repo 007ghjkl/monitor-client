@@ -3,7 +3,6 @@
 #include <QInputDialog>
 extern "C" {
 #include <libavcodec/avcodec.h>
-#include <openssl/sha.h>
 }
 #include <QDebug>
 MainWindow::MainWindow(QWidget *parent)
@@ -12,16 +11,9 @@ MainWindow::MainWindow(QWidget *parent)
 {
     ui->setupUi(this);
     initUiConnections();
-    //检验ffmpeg、OpenSSL
+    //检验ffmpeg
     // QDebug debug=qDebug().nospace();
     // debug<<avcodec_configuration()<<"\n";
-    // const char* str = "ffplay rtsp://admin:zyn050504@192.168.1.140:554/stream1";
-    // unsigned char hash[SHA256_DIGEST_LENGTH];
-    // SHA256((const unsigned char*)str, strlen(str), hash);
-    // for(int i=0;i<SHA256_DIGEST_LENGTH;i++)
-    // {
-    //     debug<<Qt::hex<<hash[i];
-    // }
 
     m_videoBuf=new TAVBufferPool;
     m_videoBuf->init(50*1024*1024);//50M
@@ -107,10 +99,10 @@ void MainWindow::closeEvent(QCloseEvent *event)
 void MainWindow::doConnectToUrl()
 {//缺少状态检查
     bool ok=false;
-    //"E:/Tools/GICutscenes/output/genshin.mp4"
+    //"E:/Tools/GICutscenes/output/genshin.mp4" "/home/rainbow/Documents/study/av/genshin.mp4"
     //"rtsp://192.168.232.129:554/live/stream"
     //"rtsp://admin:zyn050504@192.168.1.140:554/stream1"
-    QString url=QInputDialog::getText(this,"输入URL","URL",QLineEdit::Normal,"/home/rainbow/Documents/study/av/genshin.mp4",&ok);
+    QString url=QInputDialog::getText(this,"输入URL","URL",QLineEdit::Normal,"E:/Tools/GICutscenes/output/genshin.mp4",&ok);
     // QString url=QInputDialog::getText(this,"输入URL","URL",QLineEdit::Normal,"rtsp://192.168.232.129:554/live/stream",&ok);
     // QString url=QInputDialog::getText(this,"输入URL","URL",QLineEdit::Normal,"rtsp://admin:zyn050504@192.168.1.140:554/stream1",&ok);
     if(ok)
