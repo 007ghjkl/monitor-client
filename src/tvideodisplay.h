@@ -20,24 +20,24 @@ protected:
     void paintGL() override;
     void resizeGL(int w,int h) override;
 private:
-    int videoWidth;
-    int videoHeight;
-    int viewportX, viewportY, viewportWidth, viewportHeight;
-    QByteArray yData;
-    QByteArray uData;
-    QByteArray vData;
-    QOpenGLShaderProgram *prog;//着色器程序
-    QOpenGLVertexArrayObject *vao;//顶点数组对象
-    QScopedPointer<QOpenGLBuffer> vbo;//顶点缓冲对象
-    QScopedPointer<QOpenGLTexture> yTexture;
-    QScopedPointer<QOpenGLTexture> uTexture;
-    QScopedPointer<QOpenGLTexture> vTexture;
-    QByteArray vsh;
-    QByteArray fsh;
+    int m_videoWidth;
+    int m_videoHeight;
+    QByteArray m_yData;
+    QByteArray m_uData;
+    QByteArray m_vData;
+    QOpenGLShaderProgram *m_prog;//着色器程序
+    QOpenGLVertexArrayObject *m_vao;//顶点数组对象
+    QScopedPointer<QOpenGLBuffer> m_vbo;//顶点缓冲对象
+    QScopedPointer<QOpenGLTexture> m_yTexture;
+    QScopedPointer<QOpenGLTexture> m_uTexture;
+    QScopedPointer<QOpenGLTexture> m_vTexture;
+    QVector2D m_scale;
+    QByteArray m_vsh;
+    QByteArray m_fsh;
 
-    bool isPlaying;
-    QString textNoSignal;
-    QString textPromt;
+    bool m_isPlaying;
+    QString m_textNoSignal;
+    QString m_textPromt;
 
     void initShaders();
     void initGeometry();
