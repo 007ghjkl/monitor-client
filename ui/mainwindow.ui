@@ -26,7 +26,7 @@
      <x>0</x>
      <y>0</y>
      <width>800</width>
-     <height>21</height>
+     <height>31</height>
     </rect>
    </property>
    <widget class="QMenu" name="menuConnect">
@@ -82,7 +82,7 @@
   <customwidget>
    <class>TVideoDisplay</class>
    <extends>QOpenGLWidget</extends>
-   <header>tvideodisplay.h</header>
+   <header>src/tvideodisplay.h</header>
   </customwidget>
  </customwidgets>
  <resources/>
