@@ -54,11 +54,11 @@ if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)
     qt_add_executable(monitor_client
         MANUAL_FINALIZATION
         ${PROJECT_SOURCES}
-        src/tavproducer.h src/tavproducer.cpp
-        src/taudioconsumer.h src/taudioconsumer.cpp
-        src/tavbufferpool.h src/tavbufferpool.cpp
-        src/tvideodisplay.h src/tvideodisplay.cpp
-        src/tvideoconsumer.h src/tvideoconsumer.cpp
+        src/avproducer.h src/avproducer.cpp
+        src/audioconsumer.h src/audioconsumer.cpp
+        src/avbufferpool.h src/avbufferpool.cpp
+        src/videodisplay.h src/videodisplay.cpp
+        src/videoconsumer.h src/videoconsumer.cpp
     )
 # Define target properties for Android with Qt 6 as:
 #    set_property(TARGET monitor_client APPEND PROPERTY QT_ANDROID_PACKAGE_SOURCE_DIR

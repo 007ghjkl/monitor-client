@@ -1,5 +1,5 @@
-#ifndef TVIDEODISPLAY_H
-#define TVIDEODISPLAY_H
+#ifndef VIDEODISPLAY_H
+#define VIDEODISPLAY_H
 
 #include <QOpenGLWidget>
 #include <QOpenGLFunctions>
@@ -9,12 +9,12 @@
 #include <QOpenGLBuffer>
 #include <QScopedPointer>
 
-class TVideoDisplay : public QOpenGLWidget,protected QOpenGLFunctions
+class VideoDisplay : public QOpenGLWidget,protected QOpenGLFunctions
 {
     Q_OBJECT
 public:
-    TVideoDisplay(QWidget* parent);
-    virtual ~TVideoDisplay();
+    VideoDisplay(QWidget* parent);
+    virtual ~VideoDisplay();
 protected:
     void initializeGL() override;
     void paintGL() override;
@@ -52,4 +52,4 @@ public slots:
     void respondToMainDisconnect();
 };
 
-#endif // TVIDEODISPLAY_H
+#endif // VIDEODISPLAY_H

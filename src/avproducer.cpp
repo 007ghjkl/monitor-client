@@ -1,7 +1,7 @@
-﻿#include "tavproducer.h"
+﻿#include "avproducer.h"
 #include <QElapsedTimer>
 
-bool TAVProducer::openCodecContext(int *streamIdx, AVCodecContext **decCtx, AVFormatContext *fmtCtx, AVMediaType type)
+bool AVProducer::openCodecContext(int *streamIdx, AVCodecContext **decCtx, AVFormatContext *fmtCtx, AVMediaType type)
 {
     //按媒体类型寻找流号
     int streamIndex=av_find_best_stream(fmtCtx,type,-1,-1,nullptr,0);
@@ -41,7 +41,7 @@ bool TAVProducer::openCodecContext(int *streamIdx, AVCodecContext **decCtx, AVFo
     return true;
 }
 
-void TAVProducer::init()
+void AVProducer::init()
 {
     // QElapsedTimer timer;
     // timer.start();
@@ -188,7 +188,7 @@ void TAVProducer::init()
     // qDebug()<<"生产者init()耗时"<<timer.elapsed();
 }
 
-void TAVProducer::read()
+void AVProducer::read()
 {
     int ret=0;
     int index;
@@ -283,7 +283,7 @@ void TAVProducer::read()
     }
 }
 
-void TAVProducer::destroy()
+void AVProducer::destroy()
 {//确保进入最终状态
     qDebug()<<"生产者:开始销毁...";
 
@@ -310,7 +310,7 @@ void TAVProducer::destroy()
     m_stateMachine->stop();
 }
 
-void TAVProducer::reset()
+void AVProducer::reset()
 {
     avformat_close_input(&m_fmtCtx);
     av_packet_free(&m_pkt);
@@ -329,18 +329,18 @@ void TAVProducer::reset()
     }
 }
 
-TAVProducer::TAVProducer(QObject *parent)
+AVProducer::AVProducer(QObject *parent)
     : QObject{parent}
 {
     initStateMachine();
 }
 
-TAVProducer::~TAVProducer()
+AVProducer::~AVProducer()
 {
 
 }
 
-void TAVProducer::initStateMachine()
+void AVProducer::initStateMachine()
 {
     m_stateMachine=new QStateMachine(this);
     m_stateNoInput=new QState(m_stateMachine);
@@ -360,25 +360,25 @@ void TAVProducer::initStateMachine()
     m_stateReset->assignProperty(this,"state",stateVal);
     //Destroy要自己设置属性
     //设置操作
-    connect(m_stateInit,&QState::entered,this,&TAVProducer::init);
-    connect(m_stateReading,&QState::entered,this,&TAVProducer::read);
-    connect(m_stateDestroy,&QFinalState::entered,this,&TAVProducer::destroy);
-    connect(m_stateReset,&QState::entered,this,&TAVProducer::reset);
+    connect(m_stateInit,&QState::entered,this,&AVProducer::init);
+    connect(m_stateReading,&QState::entered,this,&AVProducer::read);
+    connect(m_stateDestroy,&QFinalState::entered,this,&AVProducer::destroy);
+    connect(m_stateReset,&QState::entered,this,&AVProducer::reset);
     //设置状态转移
-    m_stateNoInput->addTransition(this,&TAVProducer::foundInput,m_stateInit);
-    m_stateNoInput->addTransition(this,&TAVProducer::turnToDestroy,m_stateDestroy);
-    m_stateInit->addTransition(this,&TAVProducer::initFinished,m_stateReading);
-    m_stateInit->addTransition(this,&TAVProducer::turnToDestroy,m_stateDestroy);
-    m_stateInit->addTransition(this,&TAVProducer::turnToReset,m_stateReset);
-    m_stateReading->addTransition(this,&TAVProducer::readyToRead,m_stateReading);
-    m_stateReading->addTransition(this,&TAVProducer::turnToDestroy,m_stateDestroy);
-    m_stateReading->addTransition(this,&TAVProducer::turnToReset,m_stateReset);
-    m_stateReset->addTransition(this,&TAVProducer::turnToNoInput,m_stateNoInput);
+    m_stateNoInput->addTransition(this,&AVProducer::foundInput,m_stateInit);
+    m_stateNoInput->addTransition(this,&AVProducer::turnToDestroy,m_stateDestroy);
+    m_stateInit->addTransition(this,&AVProducer::initFinished,m_stateReading);
+    m_stateInit->addTransition(this,&AVProducer::turnToDestroy,m_stateDestroy);
+    m_stateInit->addTransition(this,&AVProducer::turnToReset,m_stateReset);
+    m_stateReading->addTransition(this,&AVProducer::readyToRead,m_stateReading);
+    m_stateReading->addTransition(this,&AVProducer::turnToDestroy,m_stateDestroy);
+    m_stateReading->addTransition(this,&AVProducer::turnToReset,m_stateReset);
+    m_stateReset->addTransition(this,&AVProducer::turnToNoInput,m_stateNoInput);
     //应用设置
     m_stateMachine->setInitialState(m_stateNoInput);
 }
 
-void TAVProducer::respondToMainURL(QString url)
+void AVProducer::respondToMainURL(QString url)
 {
     if(currentState()==AVProducerState::NoInput)
     {
@@ -387,14 +387,14 @@ void TAVProducer::respondToMainURL(QString url)
     }
 }
 
-void TAVProducer::respondToMainDestroy()
+void AVProducer::respondToMainDestroy()
 {
     setState(AVProducerState::Destroy);
     m_isWorking=false;
     emit turnToDestroy();
 }
 
-void TAVProducer::respondToMainDisconnect()
+void AVProducer::respondToMainDisconnect()
 {
     m_isWorking=false;
     m_url.clear();

@@ -1,6 +1,6 @@
-#include "tvideoconsumer.h"
+#include "videoconsumer.h"
 #include <QCoreApplication>
-TVideoConsumer::TVideoConsumer(QObject *parent)
+VideoConsumer::VideoConsumer(QObject *parent)
     : QObject{parent}
 {
     m_baseTimer=new QTimer(this);
@@ -9,10 +9,10 @@ TVideoConsumer::TVideoConsumer(QObject *parent)
     initStateMachine();
 }
 
-void TVideoConsumer::init()
+void VideoConsumer::init()
 {
     //同步策略
-    connect(m_baseTimer,&QTimer::timeout,this,&TVideoConsumer::readyToRead);
+    connect(m_baseTimer,&QTimer::timeout,this,&VideoConsumer::readyToRead);
 
     if((m_buffer->open(QIODeviceBase::ReadOnly))==false)
     {
@@ -26,7 +26,7 @@ void TVideoConsumer::init()
     emit initFinished();
 }
 
-void TVideoConsumer::read()
+void VideoConsumer::read()
 {
     if(m_isWorking)
     {
@@ -36,7 +36,7 @@ void TVideoConsumer::read()
     }
 }
 
-void TVideoConsumer::destroy()
+void VideoConsumer::destroy()
 {
     qDebug()<<"视频消费者:开始销毁...";
     if(m_buffer->isOpen())
@@ -46,7 +46,7 @@ void TVideoConsumer::destroy()
     m_stateMachine->stop();
 }
 
-void TVideoConsumer::reset()
+void VideoConsumer::reset()
 {
     m_baseTimer->stop();
     m_buffer->close();
@@ -56,7 +56,7 @@ void TVideoConsumer::reset()
     emit turnToNoInput();
 }
 
-void TVideoConsumer::initStateMachine()
+void VideoConsumer::initStateMachine()
 {
     m_stateMachine=new QStateMachine(this);
     m_stateNoInput=new QState(m_stateMachine);
@@ -76,25 +76,25 @@ void TVideoConsumer::initStateMachine()
     m_stateReset->assignProperty(this,"state",stateVal);
     //Destroy自己设定
     //设置操作
-    connect(m_stateInit,&QState::entered,this,&TVideoConsumer::init);
-    connect(m_stateReading,&QState::entered,this,&TVideoConsumer::read);
-    connect(m_stateDestroy,&QState::entered,this,&TVideoConsumer::destroy);
-    connect(m_stateReset,&QState::entered,this,&TVideoConsumer::reset);
+    connect(m_stateInit,&QState::entered,this,&VideoConsumer::init);
+    connect(m_stateReading,&QState::entered,this,&VideoConsumer::read);
+    connect(m_stateDestroy,&QState::entered,this,&VideoConsumer::destroy);
+    connect(m_stateReset,&QState::entered,this,&VideoConsumer::reset);
     //设置状态转移
-    m_stateNoInput->addTransition(this,&TVideoConsumer::foundInput,m_stateInit);
-    m_stateNoInput->addTransition(this,&TVideoConsumer::turnToDestroy,m_stateDestroy);
-    m_stateInit->addTransition(this,&TVideoConsumer::initFinished,m_stateReading);
-    m_stateInit->addTransition(this,&TVideoConsumer::turnToDestroy,m_stateDestroy);
-    m_stateInit->addTransition(this,&TVideoConsumer::turnToReset,m_stateReset);
-    m_stateReading->addTransition(this,&TVideoConsumer::readyToRead,m_stateReading);
-    m_stateReading->addTransition(this,&TVideoConsumer::turnToDestroy,m_stateDestroy);
-    m_stateReading->addTransition(this,&TVideoConsumer::turnToReset,m_stateReset);
-    m_stateReset->addTransition(this,&TVideoConsumer::turnToNoInput,m_stateNoInput);
+    m_stateNoInput->addTransition(this,&VideoConsumer::foundInput,m_stateInit);
+    m_stateNoInput->addTransition(this,&VideoConsumer::turnToDestroy,m_stateDestroy);
+    m_stateInit->addTransition(this,&VideoConsumer::initFinished,m_stateReading);
+    m_stateInit->addTransition(this,&VideoConsumer::turnToDestroy,m_stateDestroy);
+    m_stateInit->addTransition(this,&VideoConsumer::turnToReset,m_stateReset);
+    m_stateReading->addTransition(this,&VideoConsumer::readyToRead,m_stateReading);
+    m_stateReading->addTransition(this,&VideoConsumer::turnToDestroy,m_stateDestroy);
+    m_stateReading->addTransition(this,&VideoConsumer::turnToReset,m_stateReset);
+    m_stateReset->addTransition(this,&VideoConsumer::turnToNoInput,m_stateNoInput);
     //应用设置
     m_stateMachine->setInitialState(m_stateNoInput);
 }
 
-void TVideoConsumer::respondToProducer(int w, int h,qreal fps)
+void VideoConsumer::respondToProducer(int w, int h,qreal fps)
 {
     m_width=w;
     m_height=h;
@@ -102,14 +102,14 @@ void TVideoConsumer::respondToProducer(int w, int h,qreal fps)
     emit foundInput();
 }
 
-void TVideoConsumer::respondToMainDestroy()
+void VideoConsumer::respondToMainDestroy()
 {
     setState(VideoConsumerState::Destroy);
     m_isWorking=false;
     emit turnToDestroy();
 }
 
-void TVideoConsumer::respondToMainDisconnect()
+void VideoConsumer::respondToMainDisconnect()
 {
     m_isWorking=false;
     qDebug()<<"视频消费者:开始断开连接。";

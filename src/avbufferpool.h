@@ -1,12 +1,12 @@
-﻿#ifndef TAVBUFFERPOOL_H
-#define TAVBUFFERPOOL_H
+#ifndef AVBUFFERPOOL_H
+#define AVBUFFERPOOL_H
 
 #include <QIODevice>
 #include <QObject>
 #include <QMutex>
 #include <QWaitCondition>
 #include <QThread>
-class TAVBufferPool : public QIODevice
+class AVBufferPool : public QIODevice
 {
     Q_OBJECT
 private:
@@ -23,8 +23,8 @@ protected:
     qint64 readData(char *data, qint64 maxSize)override;
     qint64 writeData(const char *data, qint64 maxSize)override;
 public:
-    explicit TAVBufferPool(QObject *parent = nullptr);
-    ~TAVBufferPool();
+    explicit AVBufferPool(QObject *parent = nullptr);
+    ~AVBufferPool();
     qint64 bytesAvailable()const override;
     void init(qsizetype total);
     void produce(const char *data,qint64 len);
@@ -34,4 +34,4 @@ public slots:
     void respondToMainDisconnect();
 };
 
-#endif // TAVBUFFERPOOL_H
+#endif // AVBUFFERPOOL_H

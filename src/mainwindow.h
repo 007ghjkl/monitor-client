@@ -6,10 +6,10 @@
 extern "C"{
 #include <libavformat/avformat.h>
 }
-#include "tavbufferpool.h"
-#include "tavproducer.h"
-#include "tvideoconsumer.h"
-#include "taudioconsumer.h"
+#include "avbufferpool.h"
+#include "avproducer.h"
+#include "videoconsumer.h"
+#include "audioconsumer.h"
 // #include "tvideodisplay.h"
 QT_BEGIN_NAMESPACE
 namespace Ui {
@@ -35,10 +35,10 @@ private:
     QThread *m_avProducerThread;
     QThread *m_videoConsumerThread;
     QThread *m_audioConsumerThread;
-    TAVProducer *m_avProducer;
-    TVideoConsumer *m_videoConsumer;
-    TAudioConsumer *m_audioConsumer;
-    TAVBufferPool *m_videoBuf,*m_audioBuf;
+    AVProducer *m_avProducer;
+    VideoConsumer *m_videoConsumer;
+    AudioConsumer *m_audioConsumer;
+    AVBufferPool *m_videoBuf,*m_audioBuf;
 
     void closeEvent(QCloseEvent* event) override;
 signals:

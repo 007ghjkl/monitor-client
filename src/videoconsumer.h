@@ -1,22 +1,22 @@
-#ifndef TVIDEOCONSUMER_H
-#define TVIDEOCONSUMER_H
+#ifndef VIDEOCONSUMER_H
+#define VIDEOCONSUMER_H
 
 #include <QObject>
 #include <QStateMachine>
 #include <QFinalState>
 #include <QTimer>
-#include "tavbufferpool.h"
+#include "avbufferpool.h"
 enum class VideoConsumerState{NoInput,Init,Reading,Destroy,Reset};
-class TVideoConsumer : public QObject
+class VideoConsumer : public QObject
 {
     Q_OBJECT
     Q_PROPERTY(VideoConsumerState state MEMBER m_state READ currentState WRITE setState)
 public:
-    explicit TVideoConsumer(QObject *parent = nullptr);
+    explicit VideoConsumer(QObject *parent = nullptr);
     auto currentState()const{return m_state;};
 
     void startStateMachine(){m_stateMachine->start();};
-    void setBuffer(TAVBufferPool *buf){m_buffer=buf;};
+    void setBuffer(AVBufferPool *buf){m_buffer=buf;};
 private:
     VideoConsumerState m_state;
     QStateMachine *m_stateMachine;
@@ -33,7 +33,7 @@ private:
     int m_width;
     int m_height;
     qreal m_fps;
-    TAVBufferPool *m_buffer;
+    AVBufferPool *m_buffer;
     bool m_isWorking;//暂时
     QByteArray m_data;
 
@@ -56,4 +56,4 @@ signals:
     void sendFrame(QByteArray d);
 };
 
-#endif // TVIDEOCONSUMER_H
+#endif // VIDEOCONSUMER_H

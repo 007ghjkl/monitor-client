@@ -1,5 +1,5 @@
-﻿#ifndef TAVPRODUCER_H
-#define TAVPRODUCER_H
+#ifndef AVPRODUCER_H
+#define AVPRODUCER_H
 #include <QObject>
 #include <QVariant>
 #include <QCoreApplication>
@@ -7,7 +7,7 @@
 #include <QStateMachine>
 #include <QFinalState>
 #include <QAudioSink>
-#include "tavbufferpool.h"
+#include "avbufferpool.h"
 extern "C"{
 #include <libavcodec/avcodec.h>
 #include <libavformat/avformat.h>
@@ -17,7 +17,7 @@ extern "C"{
 }
 enum class AVProducerState{NoInput,Init,Reading,Destroy,Reset};
 // Q_DECLARE_METATYPE(AVProducerState)
-class TAVProducer : public QObject
+class AVProducer : public QObject
 {
     Q_OBJECT
     Q_PROPERTY(AVProducerState state MEMBER m_state READ currentState WRITE setState)
@@ -33,8 +33,8 @@ private:
     void initStateMachine();
 
     QString m_url;
-    TAVBufferPool *m_videoBuf;
-    TAVBufferPool *m_audioBuf;
+    AVBufferPool *m_videoBuf;
+    AVBufferPool *m_audioBuf;
 
     bool m_haveVideo=false,m_haveAudio=false;
     int m_width=0, m_height=0;
@@ -60,9 +60,9 @@ private slots:
     void destroy();
     void reset();
 public:
-    explicit TAVProducer(QObject *parent = nullptr);
-    ~TAVProducer();
-    void setBuffers(TAVBufferPool *vb,TAVBufferPool *ab){m_videoBuf=vb;m_audioBuf=ab;};
+    explicit AVProducer(QObject *parent = nullptr);
+    ~AVProducer();
+    void setBuffers(AVBufferPool *vb,AVBufferPool *ab){m_videoBuf=vb;m_audioBuf=ab;};
     auto currentState()const{return m_state;};
     void startStateMachine(){m_stateMachine->start();};
 public slots:
@@ -80,4 +80,4 @@ signals:
     void foundAudioFormat(QAudioFormat f);
 };
 void avLogCallBack(void* ptr, int level, const char* fmt, va_list vl);
-#endif // TAVPRODUCER_H
+#endif // AVPRODUCER_H

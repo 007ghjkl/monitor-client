@@ -1,7 +1,7 @@
-﻿#include "tavbufferpool.h"
+﻿#include "avbufferpool.h"
 #include <QDebug>
 
-qint64 TAVBufferPool::readData(char *data, qint64 maxSize)
+qint64 AVBufferPool::readData(char *data, qint64 maxSize)
 {
     if(m_isWorking==false)
         return 0;
@@ -44,7 +44,7 @@ qint64 TAVBufferPool::readData(char *data, qint64 maxSize)
     return maxSize;
 }
 
-qint64 TAVBufferPool::writeData(const char *data, qint64 maxSize)
+qint64 AVBufferPool::writeData(const char *data, qint64 maxSize)
 {
     if(m_isWorking==false)
         return 0;
@@ -80,18 +80,18 @@ qint64 TAVBufferPool::writeData(const char *data, qint64 maxSize)
     return maxSize;
 }
 
-TAVBufferPool::TAVBufferPool(QObject *parent)
+AVBufferPool::AVBufferPool(QObject *parent)
     : QIODevice{parent}
 {
 
 }
 
-TAVBufferPool::~TAVBufferPool()
+AVBufferPool::~AVBufferPool()
 {
     // lock.unlock();
 }
 
-qint64 TAVBufferPool::bytesAvailable() const
+qint64 AVBufferPool::bytesAvailable() const
 {
     qint64 ret=QIODevice::bytesAvailable();    
     ret+=(m_writePos-m_readPos>0)?(m_writePos-m_readPos):(m_size-m_readPos+m_writePos);
@@ -99,7 +99,7 @@ qint64 TAVBufferPool::bytesAvailable() const
     return ret;
 }
 
-void TAVBufferPool::init(qsizetype total)
+void AVBufferPool::init(qsizetype total)
 {
     m_isWorking=true;
     m_readPos=0;
@@ -108,19 +108,19 @@ void TAVBufferPool::init(qsizetype total)
     m_buffer.resize(m_size);
 }
 
-void TAVBufferPool::produce(const char *data, qint64 len)
+void AVBufferPool::produce(const char *data, qint64 len)
 {
     writeData(data,len);
 }
 
-void TAVBufferPool::sleep(int milisecond)
+void AVBufferPool::sleep(int milisecond)
 {
     QMutexLocker locker(&m_lock);
     m_condEmpty.wait(&m_lock,milisecond);
     qDebug()<<this<<"睡醒了。";
 }
 
-void TAVBufferPool::respondToMainDestroy()
+void AVBufferPool::respondToMainDestroy()
 {
     m_isWorking=false;
     // qDebug()<<"avBufs:"<<isWorking;
@@ -128,7 +128,7 @@ void TAVBufferPool::respondToMainDestroy()
     m_condFull.wakeAll();
 }
 
-void TAVBufferPool::respondToMainDisconnect()
+void AVBufferPool::respondToMainDisconnect()
 {
     m_isWorking=false;
     m_condEmpty.wakeAll();

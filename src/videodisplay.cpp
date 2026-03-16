@@ -1,9 +1,9 @@
-#include "tvideodisplay.h"
+#include "videodisplay.h"
 #include <QPainter>
 #include <QPainterPath>
 #include <QDebug>
 #include <QSurfaceFormat>
-TVideoDisplay::TVideoDisplay(QWidget* parent):QOpenGLWidget(parent)
+VideoDisplay::VideoDisplay(QWidget* parent):QOpenGLWidget(parent)
 {
     m_isPlaying=false;
     m_textNoSignal="无信号";
@@ -20,7 +20,7 @@ TVideoDisplay::TVideoDisplay(QWidget* parent):QOpenGLWidget(parent)
     // setAutoFillBackground(true);
 }
 
-TVideoDisplay::~TVideoDisplay()
+VideoDisplay::~VideoDisplay()
 {
     makeCurrent();
     m_vao->destroy();
@@ -34,7 +34,7 @@ TVideoDisplay::~TVideoDisplay()
     doneCurrent();
 }
 
-void TVideoDisplay::initializeGL()
+void VideoDisplay::initializeGL()
 {
     initializeOpenGLFunctions();
     initShaders();
@@ -45,7 +45,7 @@ void TVideoDisplay::initializeGL()
     // qDebug() << "Current Format Alpha Size:" << context()->format().alphaBufferSize();
 }
 
-void TVideoDisplay::paintGL()
+void VideoDisplay::paintGL()
 {
     if(m_isPlaying==false)
     {
@@ -89,14 +89,14 @@ void TVideoDisplay::paintGL()
     }
 }
 
-void TVideoDisplay::resizeGL(int w, int h)
+void VideoDisplay::resizeGL(int w, int h)
 {
     if(m_isPlaying==false)
         return;
     updateGeometry();
 }
 
-void TVideoDisplay::initShaders()
+void VideoDisplay::initShaders()
 {
     m_vsh=R"(
     attribute vec2 aPos;
@@ -155,7 +155,7 @@ void TVideoDisplay::initShaders()
     }
 }
 
-void TVideoDisplay::initGeometry()
+void VideoDisplay::initGeometry()
 {
     GLfloat vertices[] = {
         // 位置          // 纹理坐标
@@ -183,7 +183,7 @@ void TVideoDisplay::initGeometry()
     m_vao->release();
 }
 
-void TVideoDisplay::initTextures()
+void VideoDisplay::initTextures()
 {
     m_yTexture.reset(new QOpenGLTexture(QOpenGLTexture::Target2D));
     m_yTexture->setFormat(QOpenGLTexture::R8_UNorm);//单通道纹理
@@ -210,7 +210,7 @@ void TVideoDisplay::initTextures()
     m_vTexture->allocateStorage(QOpenGLTexture::Red,QOpenGLTexture::UInt8);
 }
 
-void TVideoDisplay::updateGeometry()
+void VideoDisplay::updateGeometry()
 {
     // glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
@@ -228,7 +228,7 @@ void TVideoDisplay::updateGeometry()
     }
 }
 
-void TVideoDisplay::drawNoSignal()
+void VideoDisplay::drawNoSignal()
 {
     // isPlaying=false;
     setPalette(QPalette(QColorConstants::Black));
@@ -247,7 +247,7 @@ void TVideoDisplay::drawNoSignal()
     // setAutoFillBackground(false);
 }
 
-void TVideoDisplay::drawPromt()
+void VideoDisplay::drawPromt()
 {
     QPainter painter(this);
     QPointF pos(12,24);
@@ -269,7 +269,7 @@ void TVideoDisplay::drawPromt()
     painter.drawText(pos,m_textPromt);//白芯
 }
 
-void TVideoDisplay::respondToVideoSize(int w, int h)
+void VideoDisplay::respondToVideoSize(int w, int h)
 {
     m_videoWidth=w;
     m_videoHeight=h;
@@ -282,7 +282,7 @@ void TVideoDisplay::respondToVideoSize(int w, int h)
     // update();
 }
 
-void TVideoDisplay::displayFrame(QByteArray d)
+void VideoDisplay::displayFrame(QByteArray d)
 {
     // qDebug()<<"屏幕将显示:"<<d.size();
     m_yData=d.first(m_videoWidth*m_videoHeight);
@@ -291,7 +291,7 @@ void TVideoDisplay::displayFrame(QByteArray d)
     update();
 }
 
-void TVideoDisplay::respondToMainDisconnect()
+void VideoDisplay::respondToMainDisconnect()
 {
     m_isPlaying=false;
     m_videoWidth=m_videoHeight=0;

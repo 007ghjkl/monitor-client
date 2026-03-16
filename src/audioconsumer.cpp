@@ -1,17 +1,17 @@
-﻿#include "taudioconsumer.h"
+﻿#include "audioconsumer.h"
 #include <QElapsedTimer>
 
-void TAudioConsumer::preInit()
+void AudioConsumer::preInit()
 {
     m_format.setSampleRate(48000);
     m_format.setSampleFormat(QAudioFormat::Int16);
     m_format.setChannelCount(2);
     m_player=new QAudioSink(m_format,this);
     m_player->deleteLater();
-    disconnect(m_stateNoInput,&QState::entered,this,&TAudioConsumer::preInit);
+    disconnect(m_stateNoInput,&QState::entered,this,&AudioConsumer::preInit);
 }
 
-void TAudioConsumer::read()
+void AudioConsumer::read()
 {
     m_player->start(m_buffer);
     qDebug()<<"音频消费者:开始播放。";
@@ -19,7 +19,7 @@ void TAudioConsumer::read()
     // qDebug()<<player->state();
 }
 
-void TAudioConsumer::init()
+void AudioConsumer::init()
 {
     m_player=new QAudioSink(m_format,this);
     // qDebug()<<"音频默认缓冲:"<<player->bufferSize();
@@ -34,7 +34,7 @@ void TAudioConsumer::init()
     emit initFinished();
 }
 
-void TAudioConsumer::destroy()
+void AudioConsumer::destroy()
 {
     qDebug()<<"音频消费者:开始销毁...";
     if(m_buffer->isOpen())
@@ -48,7 +48,7 @@ void TAudioConsumer::destroy()
     m_stateMachine->stop();
 }
 
-void TAudioConsumer::reset()
+void AudioConsumer::reset()
 {
     if(m_player)
     {
@@ -63,18 +63,18 @@ void TAudioConsumer::reset()
     emit turnToNoInput();
 }
 
-TAudioConsumer::TAudioConsumer(QObject *parent)
+AudioConsumer::AudioConsumer(QObject *parent)
     : QObject{parent}
 {
     initStateMachine();
 }
 
-TAudioConsumer::~TAudioConsumer()
+AudioConsumer::~AudioConsumer()
 {
 
 }
 
-void TAudioConsumer::initStateMachine()
+void AudioConsumer::initStateMachine()
 {
     m_stateMachine=new QStateMachine(this);
     m_stateNoInput=new QState(m_stateMachine);
@@ -94,25 +94,25 @@ void TAudioConsumer::initStateMachine()
     m_stateReset->assignProperty(this,"state",stateVal);
     //Destroy自己设定
     //设置操作
-    connect(m_stateNoInput,&QState::entered,this,&TAudioConsumer::preInit);
-    connect(m_stateInit,&QState::entered,this,&TAudioConsumer::init);
-    connect(m_stateReading,&QState::entered,this,&TAudioConsumer::read);
-    connect(m_stateDestroy,&QFinalState::entered,this,&TAudioConsumer::destroy);
-    connect(m_stateReset,&QState::entered,this,&TAudioConsumer::reset);
+    connect(m_stateNoInput,&QState::entered,this,&AudioConsumer::preInit);
+    connect(m_stateInit,&QState::entered,this,&AudioConsumer::init);
+    connect(m_stateReading,&QState::entered,this,&AudioConsumer::read);
+    connect(m_stateDestroy,&QFinalState::entered,this,&AudioConsumer::destroy);
+    connect(m_stateReset,&QState::entered,this,&AudioConsumer::reset);
     //设置状态转移
-    m_stateNoInput->addTransition(this,&TAudioConsumer::foundFormat,m_stateInit);
-    m_stateNoInput->addTransition(this,&TAudioConsumer::turnToDestroy,m_stateDestroy);
-    m_stateInit->addTransition(this,&TAudioConsumer::initFinished,m_stateReading);
-    m_stateInit->addTransition(this,&TAudioConsumer::turnToDestroy,m_stateDestroy);
-    m_stateInit->addTransition(this,&TAudioConsumer::turnToReset,m_stateReset);
-    m_stateReading->addTransition(this,&TAudioConsumer::turnToDestroy,m_stateDestroy);
-    m_stateReading->addTransition(this,&TAudioConsumer::turnToReset,m_stateReset);
-    m_stateReset->addTransition(this,&TAudioConsumer::turnToNoInput,m_stateNoInput);
+    m_stateNoInput->addTransition(this,&AudioConsumer::foundFormat,m_stateInit);
+    m_stateNoInput->addTransition(this,&AudioConsumer::turnToDestroy,m_stateDestroy);
+    m_stateInit->addTransition(this,&AudioConsumer::initFinished,m_stateReading);
+    m_stateInit->addTransition(this,&AudioConsumer::turnToDestroy,m_stateDestroy);
+    m_stateInit->addTransition(this,&AudioConsumer::turnToReset,m_stateReset);
+    m_stateReading->addTransition(this,&AudioConsumer::turnToDestroy,m_stateDestroy);
+    m_stateReading->addTransition(this,&AudioConsumer::turnToReset,m_stateReset);
+    m_stateReset->addTransition(this,&AudioConsumer::turnToNoInput,m_stateNoInput);
     //应用设置
     m_stateMachine->setInitialState(m_stateNoInput);
 }
 
-void TAudioConsumer::respondToProducer(QAudioFormat f)
+void AudioConsumer::respondToProducer(QAudioFormat f)
 {
     if(currentState()==AudioConsumerState::NoInput)
     {
@@ -121,13 +121,13 @@ void TAudioConsumer::respondToProducer(QAudioFormat f)
     }
 }
 
-void TAudioConsumer::respondToMainDestroy()
+void AudioConsumer::respondToMainDestroy()
 {
     setState(AudioConsumerState::Destroy);
     emit turnToDestroy();
 }
 
-void TAudioConsumer::respondToMainDisconnect()
+void AudioConsumer::respondToMainDisconnect()
 {
     qDebug()<<"音频消费者:开始断开连接。";
     emit turnToReset();

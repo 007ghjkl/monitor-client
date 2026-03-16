@@ -16,7 +16,7 @@
   <widget class="QWidget" name="centralwidget">
    <layout class="QVBoxLayout" name="verticalLayout">
     <item>
-     <widget class="TVideoDisplay" name="display"/>
+     <widget class="VideoDisplay" name="display"/>
     </item>
    </layout>
   </widget>
@@ -26,7 +26,7 @@
      <x>0</x>
      <y>0</y>
      <width>800</width>
-     <height>31</height>
+     <height>24</height>
     </rect>
    </property>
    <widget class="QMenu" name="menuConnect">
@@ -80,9 +80,9 @@
  </widget>
  <customwidgets>
   <customwidget>
-   <class>TVideoDisplay</class>
+   <class>VideoDisplay</class>
    <extends>QOpenGLWidget</extends>
-   <header>src/tvideodisplay.h</header>
+   <header>src/videodisplay.h</header>
   </customwidget>
  </customwidgets>
  <resources/>

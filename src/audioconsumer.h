@@ -1,11 +1,11 @@
-﻿#ifndef TAUDIOCONSUMER_H
-#define TAUDIOCONSUMER_H
+#ifndef AUDIOCONSUMER_H
+#define AUDIOCONSUMER_H
 #include <QObject>
 #include <QBuffer>
 #include <QStateMachine>
 #include <QFinalState>
 #include <QAudioSink>
-#include "tavbufferpool.h"
+#include "avbufferpool.h"
 #include <QCloseEvent>
 extern "C"{
 #include <libavformat/avformat.h>
@@ -13,7 +13,7 @@ extern "C"{
 #include <libavutil/timestamp.h>
 }
 enum class AudioConsumerState{NoInput,Init,Reading,Destroy,Reset};
-class TAudioConsumer : public QObject
+class AudioConsumer : public QObject
 {
     Q_OBJECT
     Q_PROPERTY(AudioConsumerState state MEMBER m_state READ currentState WRITE setState)
@@ -28,7 +28,7 @@ private:
     void setState(AudioConsumerState s){this->m_state=s;};
     void initStateMachine();
 
-    TAVBufferPool *m_buffer;
+    AVBufferPool *m_buffer;
     qreal m_delayTime;
 
     QAudioFormat m_format;
@@ -41,9 +41,9 @@ private slots:
     void destroy();
     void reset();
 public:
-    explicit TAudioConsumer(QObject *parent = nullptr);
-    ~TAudioConsumer();
-    void setBuffer(TAVBufferPool *buf){m_buffer=buf;};
+    explicit AudioConsumer(QObject *parent = nullptr);
+    ~AudioConsumer();
+    void setBuffer(AVBufferPool *buf){m_buffer=buf;};
     auto currentState()const{return m_state;};
     void startStateMachine(){m_stateMachine->start();};
 public slots:
@@ -58,4 +58,4 @@ signals:
     void turnToNoInput();//内部状态转移信号，配合reset()
 };
 
-#endif // TAUDIOCONSUMER_H
+#endif // AUDIOCONSUMER_H
