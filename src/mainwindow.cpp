@@ -1,6 +1,7 @@
 ﻿#include "mainwindow.h"
 #include "../ui/ui_mainwindow.h"
-#include <QInputDialog>
+#include "DialogConnectToUrl.h"
+#include <QScopedPointer>
 extern "C" {
 #include <libavcodec/avcodec.h>
 }
@@ -97,18 +98,18 @@ void MainWindow::closeEvent(QCloseEvent *event)
 }
 
 void MainWindow::doConnectToUrl()
-{//缺少状态检查
-    bool ok=false;
+{
     //"E:/Tools/GICutscenes/output/genshin.mp4" "/home/rainbow/Documents/study/av/genshin.mp4"
     //"rtsp://192.168.232.129:554/live/stream"
-    //"rtsp://admin:zyn050504@192.168.1.140:554/stream1"
-    QString url=QInputDialog::getText(this,"输入URL","URL",QLineEdit::Normal,"/home/rainbow/Documents/study/av/genshin.mp4",&ok);
-    // QString url=QInputDialog::getText(this,"输入URL","URL",QLineEdit::Normal,"rtsp://192.168.232.129:554/live/stream",&ok);
-    // QString url=QInputDialog::getText(this,"输入URL","URL",QLineEdit::Normal,"rtsp://admin:zyn050504@192.168.1.140:554/stream1",&ok);
-    if(ok)
-    {
-        emit connectToURL(url);
-    }
+    //"rtsp://192.168.1.140:554/stream1" admin:zyn050504
+
+    auto dialog=new DialogConnectToUrl;
+    connect(dialog,&DialogConnectToUrl::validUrl,this,[this](QUrl url){
+        m_url=url;
+        emit connectToURL(m_url);
+    });
+    connect(dialog,&QDialog::finished,this,[dialog](bool){dialog->deleteLater();});
+    dialog->open();
 }
 
 void MainWindow::doDisconnect()

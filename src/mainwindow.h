@@ -3,6 +3,7 @@
 #include <QMainWindow>
 #include <QThread>
 #include <QCloseEvent>
+#include <QUrl>
 extern "C"{
 #include <libavformat/avformat.h>
 }
@@ -31,6 +32,7 @@ private slots:
 
 private:
     Ui::MainWindow *ui;
+    QUrl m_url;
     void initUiConnections();
     QThread *m_avProducerThread;
     QThread *m_videoConsumerThread;
@@ -42,7 +44,7 @@ private:
 
     void closeEvent(QCloseEvent* event) override;
 signals:
-    void connectToURL(QString url);
+    void connectToURL(QUrl url);
     void destroyAVBufferPools();
     void destroyAVProducer();
     void destroyVideoConsumer();

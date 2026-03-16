@@ -43,9 +43,7 @@ bool AVProducer::openCodecContext(int *streamIdx, AVCodecContext **decCtx, AVFor
 
 void AVProducer::init()
 {
-    // QElapsedTimer timer;
-    // timer.start();
-    // av_log_set_callback(avLogCallBack);
+    av_log_set_level(AV_LOG_ERROR);
     AVDictionary* options=nullptr;
     // 设置缓存大小
     // av_dict_set(&options, "buffer_size", "2073600", 0);
@@ -60,7 +58,7 @@ void AVProducer::init()
     //初始化网络流
     avformat_network_init();
     //打开输入
-    if(avformat_open_input(&m_fmtCtx,m_url.toLocal8Bit().constData(),nullptr,&options)<0)
+    if(avformat_open_input(&m_fmtCtx,m_url.toString().toUtf8().constData(),nullptr,&options)<0)
     {
         qDebug()<<"打开"<<m_url<<"时出错!";
         QCoreApplication::exit(-1);
@@ -166,8 +164,10 @@ void AVProducer::init()
         }
 
     }
+    av_log_set_level(AV_LOG_DEBUG);
     //打印输入流信息
-    av_dump_format(m_fmtCtx,0,m_url.toLocal8Bit().constData(),0);
+    av_dump_format(m_fmtCtx,0,m_url.toString().toUtf8().constData(),0);
+    av_log_set_level(AV_LOG_ERROR);
     //分配AVPacket和AVFrame空间
     m_pkt=av_packet_alloc();
     if(!m_pkt)
@@ -185,7 +185,6 @@ void AVProducer::init()
     qDebug()<<"生产者:初始化完成。";
     m_isWorking=true;
     emit initFinished();
-    // qDebug()<<"生产者init()耗时"<<timer.elapsed();
 }
 
 void AVProducer::read()
@@ -323,7 +322,7 @@ void AVProducer::reset()
     avcodec_free_context(&m_audioDecCtx);
     swr_free(&m_swrCtx);
     qDebug()<<"生产者:异步重置完成。";
-    if(m_url.isNull())
+    if(m_url.isEmpty())
     {
         emit turnToNoInput();
     }
@@ -378,11 +377,11 @@ void AVProducer::initStateMachine()
     m_stateMachine->setInitialState(m_stateNoInput);
 }
 
-void AVProducer::respondToMainURL(QString url)
+void AVProducer::respondToMainURL(QUrl url)
 {
     if(currentState()==AVProducerState::NoInput)
     {
-        this->m_url=url;
+        m_url=url;
         emit foundInput();
     }
 }
@@ -400,14 +399,4 @@ void AVProducer::respondToMainDisconnect()
     m_url.clear();
     qDebug()<<"生产者:开始断开连接。";
     emit turnToReset();
-}
-
-
-void avLogCallBack(void *ptr, int level, const char *fmt, va_list vl)
-{
-    if (level > AV_LOG_INFO)
-        return;
-    char line[256];
-    std::vsnprintf(line,256,fmt,vl);
-    qDebug()<<line;
 }

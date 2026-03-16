@@ -2,6 +2,7 @@
 #define AVPRODUCER_H
 #include <QObject>
 #include <QVariant>
+#include <QUrl>
 #include <QCoreApplication>
 #include <QMessageBox>
 #include <QStateMachine>
@@ -14,6 +15,7 @@ extern "C"{
 #include <libavutil/imgutils.h>
 #include <libavdevice/avdevice.h>
 #include <libswresample/swresample.h>
+#include <libavutil/log.h>
 }
 enum class AVProducerState{NoInput,Init,Reading,Destroy,Reset};
 // Q_DECLARE_METATYPE(AVProducerState)
@@ -32,7 +34,9 @@ private:
     void setState(AVProducerState s){this->m_state=s;};
     void initStateMachine();
 
-    QString m_url;
+    QUrl m_url;
+    QString m_userName;
+    QString m_password;
     AVBufferPool *m_videoBuf;
     AVBufferPool *m_audioBuf;
 
@@ -66,7 +70,7 @@ public:
     auto currentState()const{return m_state;};
     void startStateMachine(){m_stateMachine->start();};
 public slots:
-    void respondToMainURL(QString url);
+    void respondToMainURL(QUrl url);
     void respondToMainDestroy();
     void respondToMainDisconnect();
 signals:
