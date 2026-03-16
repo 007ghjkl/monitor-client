@@ -8,7 +8,7 @@
 #include <QStateMachine>
 #include <QFinalState>
 #include <QAudioSink>
-#include "avbufferpool.h"
+#include "AVBufferPool.h"
 extern "C"{
 #include <libavcodec/avcodec.h>
 #include <libavformat/avformat.h>

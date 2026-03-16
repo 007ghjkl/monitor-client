@@ -1,5 +1,5 @@
-﻿#include "mainwindow.h"
-#include "../ui/ui_mainwindow.h"
+﻿#include "MainWindow.h"
+#include "../ui/ui_MainWindow.h"
 #include "DialogConnectToUrl.h"
 #include <QScopedPointer>
 extern "C" {

@@ -1,4 +1,4 @@
-﻿#ifndef MAINWINDOW_H
+#ifndef MAINWINDOW_H
 #define MAINWINDOW_H
 #include <QMainWindow>
 #include <QThread>
@@ -7,10 +7,10 @@
 extern "C"{
 #include <libavformat/avformat.h>
 }
-#include "avbufferpool.h"
-#include "avproducer.h"
-#include "videoconsumer.h"
-#include "audioconsumer.h"
+#include "AVBufferPool.h"
+#include "AVProducer.h"
+#include "VideoConsumer.h"
+#include "AudioConsumer.h"
 // #include "tvideodisplay.h"
 QT_BEGIN_NAMESPACE
 namespace Ui {

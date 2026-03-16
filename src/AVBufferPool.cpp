@@ -1,4 +1,4 @@
-﻿#include "avbufferpool.h"
+﻿#include "AVBufferPool.h"
 #include <QDebug>
 
 qint64 AVBufferPool::readData(char *data, qint64 maxSize)

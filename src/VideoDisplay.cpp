@@ -1,4 +1,4 @@
-#include "videodisplay.h"
+#include "VideoDisplay.h"
 #include <QPainter>
 #include <QPainterPath>
 #include <QDebug>

@@ -1,4 +1,4 @@
-﻿#include "avproducer.h"
+﻿#include "AVProducer.h"
 #include <QElapsedTimer>
 
 bool AVProducer::openCodecContext(int *streamIdx, AVCodecContext **decCtx, AVFormatContext *fmtCtx, AVMediaType type)

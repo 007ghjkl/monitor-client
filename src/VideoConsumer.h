@@ -5,7 +5,7 @@
 #include <QStateMachine>
 #include <QFinalState>
 #include <QTimer>
-#include "avbufferpool.h"
+#include "AVBufferPool.h"
 enum class VideoConsumerState{NoInput,Init,Reading,Destroy,Reset};
 class VideoConsumer : public QObject
 {

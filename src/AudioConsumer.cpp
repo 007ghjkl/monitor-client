@@ -1,4 +1,4 @@
-﻿#include "audioconsumer.h"
+﻿#include "AudioConsumer.h"
 #include <QElapsedTimer>
 
 void AudioConsumer::preInit()

@@ -5,7 +5,7 @@
 #include <QStateMachine>
 #include <QFinalState>
 #include <QAudioSink>
-#include "avbufferpool.h"
+#include "AVBufferPool.h"
 #include <QCloseEvent>
 extern "C"{
 #include <libavformat/avformat.h>

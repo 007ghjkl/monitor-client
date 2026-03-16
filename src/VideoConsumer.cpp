@@ -1,4 +1,4 @@
-#include "videoconsumer.h"
+#include "VideoConsumer.h"
 #include <QCoreApplication>
 VideoConsumer::VideoConsumer(QObject *parent)
     : QObject{parent}

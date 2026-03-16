@@ -45,20 +45,20 @@ elseif(UNIX)
 endif()
 set(PROJECT_SOURCES
         src/main.cpp
-        src/mainwindow.cpp
-        src/mainwindow.h
-        ui/mainwindow.ui
+        src/MainWindow.cpp
+        src/MainWindow.h
+        ui/MainWindow.ui
 )
 include_directories(${PROJECT_SOURCE_DIR})
 if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)
     qt_add_executable(monitor_client
         MANUAL_FINALIZATION
         ${PROJECT_SOURCES}
-        src/avproducer.h src/avproducer.cpp
-        src/audioconsumer.h src/audioconsumer.cpp
-        src/avbufferpool.h src/avbufferpool.cpp
-        src/videodisplay.h src/videodisplay.cpp
-        src/videoconsumer.h src/videoconsumer.cpp
+        src/AVProducer.h src/AVProducer.cpp
+        src/AudioConsumer.h src/AudioConsumer.cpp
+        src/AVBufferPool.h src/AVBufferPool.cpp
+        src/VideoDisplay.h src/VideoDisplay.cpp
+        src/VideoConsumer.h src/VideoConsumer.cpp
         src/DialogConnectToUrl.h src/DialogConnectToUrl.cpp ui/DialogConnectToUrl.ui
 
     )
