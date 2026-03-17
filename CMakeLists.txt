@@ -10,11 +10,9 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 find_package(QT NAMES Qt6 Qt5 REQUIRED COMPONENTS Widgets)
-find_package(Qt${QT_VERSION_MAJOR} REQUIRED COMPONENTS Widgets)
-# find_package(Qt${QT_VERSION_MAJOR} REQUIRED COMPONENTS Core)
-find_package(Qt6 REQUIRED COMPONENTS Multimedia)
-find_package(Qt6 REQUIRED COMPONENTS StateMachine)
-find_package(Qt6 REQUIRED COMPONENTS OpenGLWidgets)
+find_package(Qt6 REQUIRED COMPONENTS
+    Core Widgets Multimedia StateMachine OpenGLWidgets Network Xml
+)
 #查找库文件:FFmpeg
 if(WIN32)
     set(FFMPEG_ROOT "E:/Tools/ffmpeg-8.0-full_build-shared" CACHE PATH "FFmpeg 安装目录")
@@ -60,6 +58,8 @@ if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)
         src/VideoDisplay.h src/VideoDisplay.cpp
         src/VideoConsumer.h src/VideoConsumer.cpp
         src/DialogConnectToUrl.h src/DialogConnectToUrl.cpp ui/DialogConnectToUrl.ui
+        src/OnvifClient.h src/OnvifClient.cpp
+        src/DialogConnectToOnvif.h src/DialogConnectToOnvif.cpp ui/DialogConnectToOnvif.ui
 
     )
 # Define target properties for Android with Qt 6 as:
@@ -79,12 +79,9 @@ else()
         )
     endif()
 endif()
-
-# target_link_libraries(monitor_client PRIVATE Qt${QT_VERSION_MAJOR}::Core)
-target_link_libraries(monitor_client PRIVATE Qt${QT_VERSION_MAJOR}::Widgets)
-target_link_libraries(monitor_client PRIVATE Qt6::Multimedia)
-target_link_libraries(monitor_client PRIVATE Qt6::StateMachine)
-target_link_libraries(monitor_client PRIVATE Qt6::OpenGLWidgets)
+target_link_libraries(monitor_client PRIVATE
+    Qt6::Core Qt6::Widgets Qt6::Multimedia Qt6::StateMachine Qt6::OpenGLWidgets Qt6::Network Qt6::Xml
+)
 #链接库文件:FFmpeg
 target_include_directories(monitor_client PRIVATE ${FFMPEG_INCLUDE_DIRS})
 target_link_libraries(monitor_client PRIVATE ${FFMPEG_LIBRARIES})

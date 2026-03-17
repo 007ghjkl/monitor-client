@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>800</width>
+    <width>929</width>
     <height>600</height>
    </rect>
   </property>
@@ -25,7 +25,7 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>800</width>
+     <width>929</width>
      <height>24</height>
     </rect>
    </property>
@@ -34,6 +34,7 @@
      <string>连接</string>
     </property>
     <addaction name="actionURL"/>
+    <addaction name="actionOnvif"/>
     <addaction name="separator"/>
     <addaction name="actionExit"/>
    </widget>
@@ -48,9 +49,38 @@
    <addaction name="menuPlay"/>
   </widget>
   <widget class="QStatusBar" name="statusbar"/>
+  <widget class="QDockWidget" name="dockWidget">
+   <attribute name="dockWidgetArea">
+    <number>2</number>
+   </attribute>
+   <widget class="QWidget" name="dockWidgetContents">
+    <layout class="QVBoxLayout" name="verticalLayout_2">
+     <item>
+      <widget class="QComboBox" name="comboBoxChangePage">
+       <item>
+        <property name="text">
+         <string>Onvif设备</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>信号源信息</string>
+        </property>
+       </item>
+      </widget>
+     </item>
+     <item>
+      <widget class="QStackedWidget" name="stackedWidget">
+       <widget class="QWidget" name="pageOnvif"/>
+       <widget class="QWidget" name="pageAVInfo"/>
+      </widget>
+     </item>
+    </layout>
+   </widget>
+  </widget>
   <action name="actionURL">
    <property name="text">
-    <string>打开链接</string>
+    <string>URL</string>
    </property>
    <property name="shortcut">
     <string>Ctrl+U</string>
@@ -75,6 +105,11 @@
    </property>
    <property name="shortcut">
     <string>Space</string>
+   </property>
+  </action>
+  <action name="actionOnvif">
+   <property name="text">
+    <string>Onvif设备</string>
    </property>
   </action>
  </widget>

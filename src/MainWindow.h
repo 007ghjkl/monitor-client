@@ -7,11 +7,10 @@
 extern "C"{
 #include <libavformat/avformat.h>
 }
-#include "AVBufferPool.h"
 #include "AVProducer.h"
 #include "VideoConsumer.h"
 #include "AudioConsumer.h"
-// #include "tvideodisplay.h"
+#include "OnvifClient.h"
 QT_BEGIN_NAMESPACE
 namespace Ui {
 class MainWindow;
@@ -37,9 +36,11 @@ private:
     QThread *m_avProducerThread;
     QThread *m_videoConsumerThread;
     QThread *m_audioConsumerThread;
+    QThread *m_onvifClientThread;
     AVProducer *m_avProducer;
     VideoConsumer *m_videoConsumer;
     AudioConsumer *m_audioConsumer;
+    OnvifClient *m_onvifClient;
     AVBufferPool *m_videoBuf,*m_audioBuf;
 
     void closeEvent(QCloseEvent* event) override;
@@ -50,5 +51,6 @@ signals:
     void destroyVideoConsumer();
     void destroyAudioConsumer();
     void notifyDisconnect();
+    void connectToOnvif(QUrl deviceServiceAddr);
 };
 #endif // MAINWINDOW_H

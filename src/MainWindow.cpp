@@ -1,6 +1,7 @@
 ﻿#include "MainWindow.h"
 #include "../ui/ui_MainWindow.h"
 #include "DialogConnectToUrl.h"
+#include "DialogConnectToOnvif.h"
 #include <QScopedPointer>
 extern "C" {
 #include <libavcodec/avcodec.h>
@@ -24,9 +25,11 @@ MainWindow::MainWindow(QWidget *parent)
     m_avProducerThread=new QThread(this);
     m_videoConsumerThread=new QThread(this);
     m_audioConsumerThread=new QThread(this);
+    m_onvifClientThread=new QThread(this);
     m_avProducer=new AVProducer;
     m_videoConsumer=new VideoConsumer;
     m_audioConsumer=new AudioConsumer;
+    m_onvifClient=new OnvifClient;
     m_avProducer->setBuffers(m_videoBuf,m_audioBuf);
     m_videoConsumer->setBuffer(m_videoBuf);
     m_audioConsumer->setBuffer(m_audioBuf);
@@ -34,6 +37,7 @@ MainWindow::MainWindow(QWidget *parent)
     connect(this,&MainWindow::connectToURL,m_avProducer,&AVProducer::respondToMainURL);
     connect(m_avProducer,&AVProducer::foundVideoFormat,m_videoConsumer,&VideoConsumer::respondToProducer);
     connect(m_avProducer,&AVProducer::foundAudioFormat,m_audioConsumer,&AudioConsumer::respondToProducer);
+    connect(this,&MainWindow::connectToOnvif,m_onvifClient,&OnvifClient::respondToMainURL);
     //断开连接
     connect(this,&MainWindow::notifyDisconnect,m_avProducer,&AVProducer::respondToMainDisconnect,Qt::DirectConnection);
     connect(this,&MainWindow::notifyDisconnect,m_videoConsumer,&VideoConsumer::respondToMainDisconnect,Qt::DirectConnection);
@@ -56,10 +60,12 @@ MainWindow::MainWindow(QWidget *parent)
     m_avProducer->moveToThread(m_avProducerThread);
     m_videoConsumer->moveToThread(m_videoConsumerThread);
     m_audioConsumer->moveToThread(m_audioConsumerThread);
+    m_onvifClient->moveToThread(m_onvifClientThread);
 
     m_avProducerThread->start();
     m_videoConsumerThread->start();
     m_audioConsumerThread->start();
+    m_onvifClientThread->start();
     m_avProducer->startStateMachine();
     m_videoConsumer->startStateMachine();
     m_audioConsumer->startStateMachine();
@@ -86,10 +92,12 @@ void MainWindow::closeEvent(QCloseEvent *event)
     m_avProducerThread->quit();
     m_videoConsumerThread->quit();
     m_audioConsumerThread->quit();
+    m_onvifClientThread->quit();
 
     m_avProducerThread->wait(3000);
     m_videoConsumerThread->wait(3000);
     m_audioConsumerThread->wait(3000);
+    m_onvifClientThread->wait(3000);
 
     m_videoBuf->deleteLater();
     m_audioBuf->deleteLater();
@@ -108,8 +116,8 @@ void MainWindow::doConnectToUrl()
         m_url=url;
         emit connectToURL(m_url);
     });
-    connect(dialog,&QDialog::finished,this,[dialog](bool){dialog->deleteLater();});
-    dialog->open();
+    connect(dialog,&QDialog::finished,this,[dialog]{dialog->deleteLater();});
+    dialog->show();
 }
 
 void MainWindow::doDisconnect()
@@ -119,8 +127,18 @@ void MainWindow::doDisconnect()
 
 void MainWindow::initUiConnections()
 {
+    //action
     connect(ui->actionURL,&QAction::triggered,this,&MainWindow::doConnectToUrl);
+    connect(ui->actionOnvif,&QAction::triggered,this,[this]{
+        auto dialog=new DialogConnectToOnvif;
+        connect(dialog,&DialogConnectToOnvif::validDeviceAddr,this,&MainWindow::connectToOnvif);
+        connect(dialog,&QDialog::finished,this,[dialog]{dialog->deleteLater();});
+        dialog->show();
+    });
     connect(ui->actionDisconnect,&QAction::triggered,this,&MainWindow::doDisconnect);
     connect(ui->actionExit,&QAction::triggered,this,&QMainWindow::close);
+
+    //界面
+    connect(ui->comboBoxChangePage,&QComboBox::activated,ui->stackedWidget,&QStackedWidget::setCurrentIndex);
 }
 

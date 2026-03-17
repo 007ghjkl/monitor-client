@@ -31,6 +31,6 @@ void DialogConnectToUrl::postForm()
     }
     else
     {
-        QMessageBox::warning(this,"警告","URL格式不正确!");
+        QMessageBox::critical(this,"错误","URL格式不正确!");
     }
 }
