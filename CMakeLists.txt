@@ -15,7 +15,7 @@ find_package(Qt6 REQUIRED COMPONENTS
 )
 #查找库文件:FFmpeg
 if(WIN32)
-    set(FFMPEG_ROOT "E:/Tools/ffmpeg-8.0-full_build-shared" CACHE PATH "FFmpeg 安装目录")
+    set(FFMPEG_ROOT "E:/Tools/ffmpeg-8.1-full_build-shared" CACHE PATH "FFmpeg 安装目录")
     find_path(FFMPEG_INCLUDE_DIR
             NAMES libavformat/avformat.h libavcodec/avcodec.h
             PATHS ${FFMPEG_ROOT}/include
