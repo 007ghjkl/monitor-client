@@ -34,9 +34,7 @@ private:
     void setState(AVProducerState s){this->m_state=s;};
     void initStateMachine();
 
-    QUrl m_url;
-    QString m_userName;
-    QString m_password;
+    QUrl m_url{};
     AVBufferPool *m_videoBuf;
     AVBufferPool *m_audioBuf;
 

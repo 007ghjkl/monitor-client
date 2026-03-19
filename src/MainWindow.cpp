@@ -54,8 +54,6 @@ MainWindow::MainWindow(QWidget *parent)
     connect(this,&MainWindow::destroyAVProducer,m_avProducer,&AVProducer::respondToMainDestroy,Qt::DirectConnection);
     connect(this,&MainWindow::destroyVideoConsumer,m_videoConsumer,&VideoConsumer::respondToMainDestroy,Qt::DirectConnection);
     connect(this,&MainWindow::destroyAudioConsumer,m_audioConsumer,&AudioConsumer::respondToMainDestroy,Qt::DirectConnection);
-    connect(m_avProducerThread,&QThread::finished,this,[](){qDebug()<<"avProducerThread退出";});
-    connect(m_audioConsumerThread,&QThread::finished,this,[](){qDebug()<<"audioConsumerThread退出";});
 
     m_avProducer->moveToThread(m_avProducerThread);
     m_videoConsumer->moveToThread(m_videoConsumerThread);
@@ -89,6 +87,7 @@ void MainWindow::closeEvent(QCloseEvent *event)
     m_avProducer->deleteLater();
     m_videoConsumer->deleteLater();
     m_audioConsumer->deleteLater();
+    m_onvifClient->deleteLater();
     m_avProducerThread->quit();
     m_videoConsumerThread->quit();
     m_audioConsumerThread->quit();
