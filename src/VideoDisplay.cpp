@@ -115,13 +115,10 @@ void VideoDisplay::initShaders()
     uniform sampler2D tex_y;
     uniform sampler2D tex_u;
     uniform sampler2D tex_v;
-    // const mat3 yuv2rgb=mat3( 1,       1,         1,
-    //                          0,       -0.39465,  2.03211,
-    //                          1.13983, -0.58060,  0);
-    const mat3 yuv2rgb = mat3(
-        1.16438,  1.16438,  1.16438,
-        0.0,     -0.39176,  2.01723,
-        1.59603, -0.81297,  0.0
+    const mat3 bt709=mat3(
+        1.16438356e+00, 3.15967490e-17, 1.79274107e+00,
+        1.16438356e+00,-2.13248614e-01,-5.32909329e-01,
+        1.16438356e+00, 2.11240179e+00,-5.08708812e-17
     );
     // out vec4 DebugColor;
     void main(void)
@@ -131,7 +128,7 @@ void VideoDisplay::initShaders()
         yuv.x = texture2D(tex_y, texCoord).r;
         yuv.y = texture2D(tex_u, texCoord).r - 0.5;
         yuv.z = texture2D(tex_v, texCoord).r - 0.5;
-        rgb=yuv2rgb*yuv;
+        rgb=yuv*bt709;
         gl_FragColor = vec4(rgb, 1.0);
 
         // DebugColor = vec4(texture2D(tex_y, texCoord).rrr, 1.0);
