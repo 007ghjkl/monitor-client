@@ -2,7 +2,8 @@
 #include "../ui/ui_MainWindow.h"
 #include "DialogConnectToUrl.h"
 #include "DialogConnectToOnvif.h"
-#include <QScopedPointer>
+// #include <QScopedPointer>
+#include <QSystemTrayIcon>
 extern "C" {
 #include <libavcodec/avcodec.h>
 }
@@ -45,6 +46,13 @@ MainWindow::MainWindow(QWidget *parent)
     connect(this,&MainWindow::notifyDisconnect,m_videoBuf,&AVBufferPool::respondToMainDisconnect,Qt::DirectConnection);
     connect(this,&MainWindow::notifyDisconnect,m_audioBuf,&AVBufferPool::respondToMainDisconnect,Qt::DirectConnection);
     connect(this,&MainWindow::notifyDisconnect,ui->display,&VideoDisplay::respondToMainDisconnect,Qt::UniqueConnection);
+    //截屏
+    connect(this,&MainWindow::notifyScreenShot,m_videoConsumer,&VideoConsumer::respondToMainScreenShot);
+    connect(m_videoConsumer,&VideoConsumer::screenShotOK,this,[](QString dirName){
+        QSystemTrayIcon tray;
+        tray.show();
+        tray.showMessage("截屏保存成功","保存在"+dirName,QSystemTrayIcon::Information,3000);
+    });
     //显示
     connect(m_videoConsumer,&VideoConsumer::setDisplaySize,ui->display,&VideoDisplay::respondToVideoSize,Qt::UniqueConnection);
     connect(m_videoConsumer,&VideoConsumer::sendFrame,ui->display,&VideoDisplay::displayFrame,Qt::UniqueConnection);
@@ -136,6 +144,9 @@ void MainWindow::initUiConnections()
     });
     connect(ui->actionDisconnect,&QAction::triggered,this,&MainWindow::doDisconnect);
     connect(ui->actionExit,&QAction::triggered,this,&QMainWindow::close);
+    connect(ui->actionScreenShot,&QAction::triggered,this,[this]{
+        emit notifyScreenShot();
+    });
 
     //界面
     connect(ui->comboBoxChangePage,&QComboBox::activated,ui->stackedWidget,&QStackedWidget::setCurrentIndex);

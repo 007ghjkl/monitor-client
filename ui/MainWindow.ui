@@ -45,8 +45,15 @@
     <addaction name="actionPause"/>
     <addaction name="actionDisconnect"/>
    </widget>
+   <widget class="QMenu" name="menuCapture">
+    <property name="title">
+     <string>捕获</string>
+    </property>
+    <addaction name="actionScreenShot"/>
+   </widget>
    <addaction name="menuConnect"/>
    <addaction name="menuPlay"/>
+   <addaction name="menuCapture"/>
   </widget>
   <widget class="QStatusBar" name="statusbar"/>
   <widget class="QDockWidget" name="dockWidget">
@@ -110,6 +117,11 @@
   <action name="actionOnvif">
    <property name="text">
     <string>Onvif设备</string>
+   </property>
+  </action>
+  <action name="actionScreenShot">
+   <property name="text">
+    <string>截屏</string>
    </property>
   </action>
  </widget>

@@ -51,6 +51,7 @@ signals:
     void destroyVideoConsumer();
     void destroyAudioConsumer();
     void notifyDisconnect();
+    void notifyScreenShot();
     void connectToOnvif(QUrl deviceServiceAddr);
 };
 #endif // MAINWINDOW_H
