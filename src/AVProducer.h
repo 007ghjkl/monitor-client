@@ -16,6 +16,8 @@ extern "C"{
 #include <libavdevice/avdevice.h>
 #include <libswresample/swresample.h>
 #include <libavutil/log.h>
+#include <libavutil/hwcontext.h>
+#include <libswscale/swscale.h>
 }
 enum class AVProducerState{NoInput,Init,Reading,Destroy,Reset};
 // Q_DECLARE_METATYPE(AVProducerState)
@@ -33,6 +35,7 @@ private:
     QState *m_stateReset;
     void setState(AVProducerState s){this->m_state=s;};
     void initStateMachine();
+    bool m_isWorking;
 
     QUrl m_url{};
     AVBufferPool *m_videoBuf;
@@ -42,18 +45,27 @@ private:
     int m_width=0, m_height=0;
     qreal m_fps;
     AVPixelFormat m_pixFmt;
-    uint8_t *m_aVideoFrameData[4]={nullptr};
-    int m_aVideoFrameLinesize[4];
-    int m_aVideoFrameSize;
+
+    bool m_withHwAccel;
+    AVBufferRef *m_hwDiveceCtx=nullptr;
+
+    bool m_withScale;
+    SwsContext* m_swsCtx=nullptr;
+    AVFrame *m_tmpFrame=nullptr;
+    AVFrame *m_swsFrame=nullptr;
+
     bool m_withResample;
-    bool m_isWorking;
+    SwrContext* m_swrCtx=nullptr;
+    AVFrame *m_swrFrame=nullptr;
+    AVSampleFormat m_swrSampleFormat;
 
     int m_videoStreamIdx = -1, m_audioStreamIdx = -1;
     AVFormatContext *m_fmtCtx = nullptr;
     AVCodecContext *m_videoDecCtx = nullptr, *m_audioDecCtx=nullptr;
     AVPacket* m_pkt=nullptr;
     AVFrame* m_frame=nullptr;
-    SwrContext* m_swrCtx=nullptr;
+    uint8_t *m_imageBuffer=nullptr;
+    int m_imageSize;
     char m_errorStr[AV_ERROR_MAX_STRING_SIZE];
     bool openCodecContext(int *streamIdx,AVCodecContext **decCtx, AVFormatContext *fmtCtx, enum AVMediaType type);
 private slots:
@@ -81,5 +93,4 @@ signals:
     void foundVideoFormat(int w,int h,qreal fps);
     void foundAudioFormat(QAudioFormat f);
 };
-void avLogCallBack(void* ptr, int level, const char* fmt, va_list vl);
 #endif // AVPRODUCER_H

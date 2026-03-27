@@ -1,6 +1,23 @@
 ﻿#include "AVProducer.h"
 #include <QElapsedTimer>
-
+namespace HWAccel{
+#ifdef Q_OS_LINUX
+constexpr AVHWDeviceType deviceType=AV_HWDEVICE_TYPE_VAAPI;
+#elif Q_OS_WIN
+constexpr AVHWDeviceType deviceType=AV_HWDEVICE_TYPE_D3D11VA;
+#endif
+AVPixelFormat pixFmt;
+AVPixelFormat hwGetFormat(AVCodecContext *ctx,const enum AVPixelFormat *pix_fmts)
+{
+    while(*pix_fmts!=pixFmt)
+    {
+        ++pix_fmts;
+        if(AV_PIX_FMT_NONE==*pix_fmts){break;}
+    }
+    // qDebug()<<*pix_fmts;
+    return *pix_fmts;
+}
+}
 bool AVProducer::openCodecContext(int *streamIdx, AVCodecContext **decCtx, AVFormatContext *fmtCtx, AVMediaType type)
 {
     //按媒体类型寻找流号
@@ -31,6 +48,44 @@ bool AVProducer::openCodecContext(int *streamIdx, AVCodecContext **decCtx, AVFor
     if(avcodec_parameters_to_context(*decCtx, st->codecpar)<0)
     {
         qDebug()<<"不能正常设置解码器["<<dec->name<<"]的上下文，将使用默认配置。";
+    }
+    if(AVMEDIA_TYPE_VIDEO==type)
+    {
+        //配置硬件加速
+        m_withHwAccel=true;
+        int hwIndex=0;
+        const AVCodecHWConfig *hwConfig=nullptr;
+        while(true)
+        {
+            hwConfig=avcodec_get_hw_config(m_videoDecCtx->codec, hwIndex);
+            if(hwConfig)
+            {
+                if(hwConfig->device_type==HWAccel::deviceType&&hwConfig->methods & AV_CODEC_HW_CONFIG_METHOD_HW_DEVICE_CTX)
+                {
+                    HWAccel::pixFmt=hwConfig->pix_fmt;
+                    qDebug()<<"硬件加速类型:"<<HWAccel::deviceType<<",像素格式:"<<HWAccel::pixFmt;
+                    break;
+                }
+            }
+            else
+            {
+                m_withHwAccel=false;
+                qDebug()<<"硬件加速配置失败!";
+                break;
+            }
+            ++hwIndex;
+        }
+        //初始化硬件加速
+        if(m_withHwAccel)
+        {
+            if(av_hwdevice_ctx_create(&m_hwDiveceCtx, HWAccel::deviceType, nullptr, nullptr, 0)<0)
+            {
+                qDebug()<<"给AVHWDeviceContext初始化时出错!";
+                QCoreApplication::exit(-1);
+            }
+            m_videoDecCtx->get_format=HWAccel::hwGetFormat;
+            m_videoDecCtx->hw_device_ctx=av_buffer_ref(m_hwDiveceCtx);
+        }
     }
     //启动解码器
     if(avcodec_open2(*decCtx, dec, nullptr)<0)
@@ -79,11 +134,26 @@ void AVProducer::init()
         m_height=m_videoDecCtx->height;
         m_fps=(qreal)(m_videoDecCtx->framerate.num)/(m_videoDecCtx->framerate.den);
         m_pixFmt=m_videoDecCtx->pix_fmt;
-        m_aVideoFrameSize=av_image_alloc(m_aVideoFrameData,m_aVideoFrameLinesize,m_width,m_height,m_pixFmt,1);
-        if(m_aVideoFrameSize<0)
+        //分配一帧空间
+        m_imageSize=av_image_get_buffer_size(AV_PIX_FMT_YUV420P,m_width,m_height,1);
+        m_imageBuffer=(uint8_t *)av_malloc(m_imageSize);
+        if(!m_imageBuffer)
         {
-            qDebug()<<"分配一帧视频的内存对齐时出错!";
+            qDebug()<<"分配一帧对齐空间时出错!";
             QCoreApplication::exit(-1);
+        }
+        //像素格式转换
+        m_withScale=m_withHwAccel||m_pixFmt!=AV_PIX_FMT_YUV420P;
+        if(m_withScale)
+        {
+            m_swsCtx=sws_alloc_context();
+            m_tmpFrame=av_frame_alloc();
+            m_swsFrame=av_frame_alloc();
+            if(!m_swsCtx||!m_swsFrame||!m_tmpFrame)
+            {
+                qDebug()<<"初始化ScaleContext和转换帧时出错!";
+                QCoreApplication::exit(-1);
+            }
         }
         if(m_haveVideo)
         {
@@ -93,20 +163,10 @@ void AVProducer::init()
     //初始化音频解码器
     if(openCodecContext(&m_audioStreamIdx,&m_audioDecCtx,m_fmtCtx,AVMEDIA_TYPE_AUDIO))
     {
-        m_withResample=true;
         QAudioFormat format;
-        m_swrCtx=swr_alloc();
-        if(!m_swrCtx)
-        {
-            qDebug()<<"分配SwrContext空间时出错！";
-            QCoreApplication::exit(-1);
-        }
-        // qDebug()<<"每帧采样点数:"<<audioDecCtx->frame_size;
+        m_withResample=true;
         //采样率
         format.setSampleRate(m_audioDecCtx->sample_rate);
-        av_opt_set_int(m_swrCtx, "in_sample_rate",m_audioDecCtx->sample_rate,0);
-        av_opt_set_int(m_swrCtx, "out_sample_rate",m_audioDecCtx->sample_rate,0);
-        // qDebug()<<"采样率："<<m_audioDecCtx->sample_rate;
         //声道数
         int channelCount=m_audioDecCtx->ch_layout.nb_channels;
         switch(channelCount)
@@ -121,48 +181,47 @@ void AVProducer::init()
             format.setChannelConfig(QAudioFormat::ChannelConfigUnknown);
             break;
         }
-        av_opt_set_chlayout(m_swrCtx,"in_chlayout",&(m_audioDecCtx->ch_layout),0);
-        av_opt_set_chlayout(m_swrCtx,"out_chlayout",&(m_audioDecCtx->ch_layout),0);
-        // qDebug()<<"声道数："<<m_audioDecCtx->ch_layout.nb_channels;
         //采样格式
         auto raw=m_audioDecCtx->sample_fmt;
-        // qDebug()<<"输入采样格式："<<raw;
-        av_opt_set_sample_fmt(m_swrCtx,"in_sample_fmt",raw,0);
         if(raw==AV_SAMPLE_FMT_U8||raw==AV_SAMPLE_FMT_U8P)
         {
             format.setSampleFormat(QAudioFormat::UInt8);
-            av_opt_set_sample_fmt(m_swrCtx,"out_sample_fmt",AV_SAMPLE_FMT_U8,0);
+            m_swrSampleFormat=AV_SAMPLE_FMT_U8;
         }
         else if(raw==AV_SAMPLE_FMT_S16||raw==AV_SAMPLE_FMT_S16P)
         {
             format.setSampleFormat(QAudioFormat::Int16);
-            av_opt_set_sample_fmt(m_swrCtx,"out_sample_fmt",AV_SAMPLE_FMT_S16,0);
+            m_swrSampleFormat=AV_SAMPLE_FMT_S16;
         }
         else if(raw==AV_SAMPLE_FMT_S32||raw==AV_SAMPLE_FMT_S32P||raw==AV_SAMPLE_FMT_S64||raw==AV_SAMPLE_FMT_S64P)
         {
             format.setSampleFormat(QAudioFormat::Int32);
-            av_opt_set_sample_fmt(m_swrCtx,"out_sample_fmt",AV_SAMPLE_FMT_S32,0);
+            m_swrSampleFormat=AV_SAMPLE_FMT_S32;
         }
         else if(raw==AV_SAMPLE_FMT_FLT||raw==AV_SAMPLE_FMT_FLTP||raw==AV_SAMPLE_FMT_DBL||raw==AV_SAMPLE_FMT_DBLP)
         {
             format.setSampleFormat(QAudioFormat::Float);
-            av_opt_set_sample_fmt(m_swrCtx,"out_sample_fmt",AV_SAMPLE_FMT_FLT,0);
+            m_swrSampleFormat=AV_SAMPLE_FMT_FLT;
         }
+        //重采样
         if(raw==AV_SAMPLE_FMT_U8||raw==AV_SAMPLE_FMT_S16||raw==AV_SAMPLE_FMT_S32||raw==AV_SAMPLE_FMT_FLT)
         {
             m_withResample=false;
         }
-        // qDebug()<<"输出采样格式："<<format.sampleFormat();
-        if(swr_init(m_swrCtx)<0)
+        if(m_withResample)
         {
-            qDebug()<<"SwrContext初始化时出错！";
-            QCoreApplication::exit(-1);
+            m_swrCtx=swr_alloc();
+            m_swrFrame=av_frame_alloc();
+            if(!m_swrCtx||!m_swrFrame)
+            {
+                qDebug()<<"初始化ResampleContext和转换帧时出错!";
+                QCoreApplication::exit(-1);
+            }
         }
         if(m_haveAudio)
         {
             emit foundAudioFormat(format);
         }
-
     }
     av_log_set_level(AV_LOG_DEBUG);
     //打印输入流信息
@@ -229,49 +288,56 @@ void AVProducer::read()
                 av_make_error_string(m_errorStr,AV_ERROR_MAX_STRING_SIZE,ret);
                 qDebug()<<"将解码器输出传入AVFrame帧时出现错误:"<<m_errorStr;
             }
-            //写入数据
-            if(index==m_videoStreamIdx)
+            //一帧视频
+            if(index==m_videoStreamIdx&&m_haveVideo)
             {
-                if(m_haveVideo)
+                if(m_withHwAccel)
                 {
-                    av_image_copy(m_aVideoFrameData,m_aVideoFrameLinesize,m_frame->data,m_frame->linesize,m_pixFmt,m_width,m_height);
-                    m_videoBuf->produce((const char*)(m_aVideoFrameData[0]),m_aVideoFrameSize);
+                    ret=av_hwframe_transfer_data(m_tmpFrame,m_frame,0);
+                    if(ret<0)
+                    {
+                        qDebug()<<"将显存数据转移到内存时出错!";
+                    }
                 }
+                else
+                {
+                    m_tmpFrame=m_frame;
+                }
+                if(m_withScale)
+                {
+                    m_swsFrame->width=m_width;
+                    m_swsFrame->height=m_height;
+                    m_swsFrame->format=AV_PIX_FMT_YUV420P;
+                    ret=sws_scale_frame(m_swsCtx,m_swsFrame,m_tmpFrame);
+                    if(ret<0)
+                    {
+                        qDebug()<<"转换像素格式时出错!";
+                    }
+                }
+                else
+                {
+                    m_swsFrame=m_tmpFrame;
+                }
+                av_image_copy_to_buffer(m_imageBuffer,m_imageSize,m_swsFrame->data,m_swsFrame->linesize,AV_PIX_FMT_YUV420P,m_width,m_height,1);
+                m_videoBuf->produce((const char*)m_imageBuffer,m_imageSize);
             }
-            else if(index==m_audioStreamIdx)
+            //一帧音频
+            else if(index==m_audioStreamIdx&&m_haveAudio)
             {
-                if(m_haveAudio)
+                if(m_withResample)
                 {
-                    AVFrame* aFrame=nullptr;
-                    // withResample=true;
-                    if(m_withResample)
-                    {
-                        aFrame=av_frame_alloc();
-                        av_opt_get_int(m_swrCtx,"out_sample_rate",0,(int64_t*)(&(aFrame->sample_rate)));
-                        av_opt_get_chlayout(m_swrCtx,"out_chlayout",0,&(aFrame->ch_layout));
-                        av_opt_get_sample_fmt(m_swrCtx,"out_sample_fmt",0,(AVSampleFormat*)(&(aFrame->format)));
-                        ret=swr_convert_frame(m_swrCtx,aFrame,m_frame);
-                        if(ret!=0)
-                        {
-                            qDebug()<<"重采样AVFrame时出错！";
-                        }
-                    }
-                    else
-                    {
-                        // ret=av_frame_ref(aFrame,frame);
-                        // if(ret<0)
-                        // {
-                        //     qDebug()<<"设置引用计数时出错!"<<ret;
-                        // }
-                        aFrame=m_frame;
-                    }
-                    qsizetype lineSize=aFrame->nb_samples*av_get_bytes_per_sample(static_cast<AVSampleFormat>(aFrame->format))*aFrame->ch_layout.nb_channels;
-                    m_audioBuf->produce((const char*)(aFrame->extended_data[0]),lineSize);//线程安全地写
-                    if(m_withResample)
-                    {
-                        av_frame_free(&aFrame);
-                    }
+                    m_swrFrame->sample_rate=m_frame->sample_rate;
+                    m_swrFrame->ch_layout=m_frame->ch_layout;
+                    m_swrFrame->format=m_swrSampleFormat;
+                    swr_config_frame(m_swrCtx,m_swrFrame,m_frame);
+                    swr_convert_frame(m_swrCtx,m_swrFrame,m_frame);
                 }
+                else
+                {
+                    m_swrFrame=m_frame;
+                }
+                qsizetype size=m_swrFrame->nb_samples*av_get_bytes_per_sample(static_cast<AVSampleFormat>(m_swrFrame->format));
+                m_audioBuf->produce((const char*)(m_swrFrame->extended_data[0]),size);
             }
             // av_frame_unref(frame);
         }
@@ -289,11 +355,11 @@ void AVProducer::destroy()
     avformat_close_input(&m_fmtCtx);
     av_packet_free(&m_pkt);
     av_frame_free(&m_frame);
+    av_frame_free(&m_tmpFrame);
+    av_frame_free(&m_swsFrame);
+    av_frame_free(&m_swrFrame);
     avcodec_free_context(&m_videoDecCtx);
-    if(m_aVideoFrameData[0])
-    {
-        av_freep(&m_aVideoFrameData[0]);
-    }
+    av_buffer_unref(&m_hwDiveceCtx);
     avcodec_free_context(&m_audioDecCtx);
     swr_free(&m_swrCtx);
 
@@ -314,11 +380,11 @@ void AVProducer::reset()
     avformat_close_input(&m_fmtCtx);
     av_packet_free(&m_pkt);
     av_frame_free(&m_frame);
+    av_frame_free(&m_tmpFrame);
+    av_frame_free(&m_swsFrame);
+    av_frame_free(&m_swrFrame);
     avcodec_free_context(&m_videoDecCtx);
-    if(m_aVideoFrameData[0])
-    {
-        av_freep(&m_aVideoFrameData[0]);
-    }
+    av_buffer_unref(&m_hwDiveceCtx);
     avcodec_free_context(&m_audioDecCtx);
     swr_free(&m_swrCtx);
     qDebug()<<"生产者:异步重置完成。";

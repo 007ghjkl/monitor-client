@@ -31,6 +31,7 @@ if(WIN32)
         ${FFMPEG_AVCODEC_LIB}
         ${FFMPEG_AVUTIL_LIB}
         ${FFMPEG_SWRESAMPLE_LIB}
+        ${FFMPEG_SWSCALE_LIB}
     )
 elseif(UNIX)
     find_package(PkgConfig REQUIRED)
@@ -39,6 +40,7 @@ elseif(UNIX)
             libavcodec
             libavutil
             libswresample
+            libswscale
         )
 endif()
 set(PROJECT_SOURCES
