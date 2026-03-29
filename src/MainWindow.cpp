@@ -27,10 +27,12 @@ MainWindow::MainWindow(QWidget *parent)
     m_videoConsumerThread=new QThread(this);
     m_audioConsumerThread=new QThread(this);
     m_onvifClientThread=new QThread(this);
+    m_screenShooterThread=new QThread(this);
     m_avProducer=new AVProducer;
     m_videoConsumer=new VideoConsumer;
     m_audioConsumer=new AudioConsumer;
     m_onvifClient=new OnvifClient;
+    m_screenShooter=new ScreenShooter;
     m_avProducer->setBuffers(m_videoBuf,m_audioBuf);
     m_videoConsumer->setBuffer(m_videoBuf);
     m_audioConsumer->setBuffer(m_audioBuf);
@@ -39,6 +41,7 @@ MainWindow::MainWindow(QWidget *parent)
     connect(m_avProducer,&AVProducer::foundVideoFormat,m_videoConsumer,&VideoConsumer::respondToProducer);
     connect(m_avProducer,&AVProducer::foundAudioFormat,m_audioConsumer,&AudioConsumer::respondToProducer);
     connect(this,&MainWindow::connectToOnvif,m_onvifClient,&OnvifClient::respondToMainURL);
+    connect(m_avProducer,&AVProducer::foundVideoFormat,m_screenShooter,&ScreenShooter::respondToProducer);
     //断开连接
     connect(this,&MainWindow::notifyDisconnect,m_avProducer,&AVProducer::respondToMainDisconnect,Qt::DirectConnection);
     connect(this,&MainWindow::notifyDisconnect,m_videoConsumer,&VideoConsumer::respondToMainDisconnect,Qt::DirectConnection);
@@ -46,9 +49,11 @@ MainWindow::MainWindow(QWidget *parent)
     connect(this,&MainWindow::notifyDisconnect,m_videoBuf,&AVBufferPool::respondToMainDisconnect,Qt::DirectConnection);
     connect(this,&MainWindow::notifyDisconnect,m_audioBuf,&AVBufferPool::respondToMainDisconnect,Qt::DirectConnection);
     connect(this,&MainWindow::notifyDisconnect,ui->display,&VideoDisplay::respondToMainDisconnect,Qt::UniqueConnection);
+    connect(this,&MainWindow::notifyDisconnect,m_screenShooter,&ScreenShooter::destroy);
     //截屏
     connect(this,&MainWindow::notifyScreenShot,m_videoConsumer,&VideoConsumer::respondToMainScreenShot);
-    connect(m_videoConsumer,&VideoConsumer::screenShotOK,this,[](QString dirName){
+    connect(m_videoConsumer,&VideoConsumer::notifyScreenShot,m_screenShooter,&ScreenShooter::screenShot);
+    connect(m_screenShooter,&ScreenShooter::screenShotOK,this,[](QString dirName){
         QSystemTrayIcon tray;
         tray.show();
         tray.showMessage("截屏保存成功","保存在"+dirName,QSystemTrayIcon::Information,3000);
@@ -67,11 +72,14 @@ MainWindow::MainWindow(QWidget *parent)
     m_videoConsumer->moveToThread(m_videoConsumerThread);
     m_audioConsumer->moveToThread(m_audioConsumerThread);
     m_onvifClient->moveToThread(m_onvifClientThread);
+    m_screenShooter->moveToThread(m_screenShooterThread);
 
     m_avProducerThread->start();
     m_videoConsumerThread->start();
     m_audioConsumerThread->start();
     m_onvifClientThread->start();
+    m_screenShooterThread->start();
+
     m_avProducer->startStateMachine();
     m_videoConsumer->startStateMachine();
     m_audioConsumer->startStateMachine();
@@ -100,11 +108,13 @@ void MainWindow::closeEvent(QCloseEvent *event)
     m_videoConsumerThread->quit();
     m_audioConsumerThread->quit();
     m_onvifClientThread->quit();
+    m_screenShooterThread->quit();
 
     m_avProducerThread->wait(3000);
     m_videoConsumerThread->wait(3000);
     m_audioConsumerThread->wait(3000);
     m_onvifClientThread->wait(3000);
+    m_screenShooterThread->wait(3000);
 
     m_videoBuf->deleteLater();
     m_audioBuf->deleteLater();

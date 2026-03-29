@@ -5,13 +5,7 @@
 #include <QStateMachine>
 #include <QFinalState>
 #include <QTimer>
-#include <QFile>
-#include <QDir>
-#include <QDateTime>
 #include "AVBufferPool.h"
-extern "C"{
-#include <libavcodec/avcodec.h>
-}
 enum class VideoConsumerState{NoInput,Init,Reading,Destroy,Reset};
 class VideoConsumer : public QObject
 {
@@ -44,11 +38,6 @@ private:
     QByteArray m_data;
 
     bool m_needPic;
-    AVCodecContext *m_picEncCtx=nullptr;
-    AVPacket *m_picPkt=nullptr;
-    AVFrame *m_picFrame=nullptr;
-    QString m_picNamePrefix{"监控截图"};
-    QFile *m_picFile=nullptr;
 
     void init();
     void read();
@@ -68,7 +57,7 @@ signals:
     void turnToNoInput();//内部状态转移信号，配合reset()
     void setDisplaySize(int w,int h);
     void sendFrame(QByteArray d);
-    void screenShotOK(QString dirPath);
+    void notifyScreenShot(QByteArray d);
 };
 
 #endif // VIDEOCONSUMER_H

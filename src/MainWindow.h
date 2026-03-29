@@ -11,6 +11,7 @@ extern "C"{
 #include "VideoConsumer.h"
 #include "AudioConsumer.h"
 #include "OnvifClient.h"
+#include "ScreenShooter.h"
 QT_BEGIN_NAMESPACE
 namespace Ui {
 class MainWindow;
@@ -37,10 +38,12 @@ private:
     QThread *m_videoConsumerThread;
     QThread *m_audioConsumerThread;
     QThread *m_onvifClientThread;
+    QThread *m_screenShooterThread;
     AVProducer *m_avProducer;
     VideoConsumer *m_videoConsumer;
     AudioConsumer *m_audioConsumer;
     OnvifClient *m_onvifClient;
+    ScreenShooter *m_screenShooter;
     AVBufferPool *m_videoBuf,*m_audioBuf;
 
     void closeEvent(QCloseEvent* event) override;

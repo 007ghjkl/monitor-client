@@ -63,6 +63,7 @@ if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)
         src/DialogConnectToUrl.h src/DialogConnectToUrl.cpp ui/DialogConnectToUrl.ui
         src/OnvifClient.h src/OnvifClient.cpp
         src/DialogConnectToOnvif.h src/DialogConnectToOnvif.cpp ui/DialogConnectToOnvif.ui
+        src/ScreenShooter.h src/ScreenShooter.cpp
 
     )
 # Define target properties for Android with Qt 6 as:

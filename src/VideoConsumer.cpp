@@ -19,44 +19,6 @@ void VideoConsumer::init()
         qDebug()<<"视频消费者打开缓冲区失败!";
         QCoreApplication::exit(-1);
     }
-    //一帧截屏
-    auto encoder=avcodec_find_encoder(AV_CODEC_ID_JPEG2000);
-    if(!encoder)
-    {
-        qDebug()<<"找不到JPEG2000编码器!";
-        QCoreApplication::exit(-1);
-    }
-    m_picEncCtx=avcodec_alloc_context3(encoder);
-    if(!m_picEncCtx)
-    {
-        qDebug()<<"给截屏编码器分配上下文空间时出错!";
-        QCoreApplication::exit(-1);
-    }
-    m_picEncCtx->width=m_width;
-    m_picEncCtx->height=m_height;
-    m_picEncCtx->pix_fmt=AV_PIX_FMT_YUV420P;
-    m_picEncCtx->time_base=(AVRational){1, 25};
-    if(avcodec_open2(m_picEncCtx,encoder,nullptr)<0)
-    {
-        qDebug()<<"打开截屏编码器时出错!";
-        QCoreApplication::exit(-1);
-    }
-    m_picPkt=av_packet_alloc();
-    m_picFrame=av_frame_alloc();
-    if(!m_picPkt||!m_picFrame)
-    {
-        qDebug()<<"分配截屏AVFrame或AVPacket空间失败!";
-        QCoreApplication::exit(-1);
-    }
-    m_picFrame->width=m_width;
-    m_picFrame->height=m_height;
-    m_picFrame->format=AV_PIX_FMT_YUV420P;
-    if(av_frame_get_buffer(m_picFrame,1)<0||av_frame_make_writable(m_picFrame)<0)
-    {
-        qDebug()<<"初始化截屏AVFrame时出错!";
-        QCoreApplication::exit(-1);
-    }
-    m_picFile=new QFile(this);
     m_needPic=false;
     //其他
     m_isWorking=true;
@@ -72,33 +34,13 @@ void VideoConsumer::read()
     {
         m_baseTimer->start(1/m_fps*1000);
         m_data=m_buffer->read(m_width*m_height*3/2);
+        emit sendFrame(m_data);
+        // auto screenShotData=std::move(m_data);
         if(m_needPic)
         {
-            memcpy(m_picFrame->data[0],m_data.data(),m_width*m_height);
-            memcpy(m_picFrame->data[1],m_data.data()+m_width*m_height,m_width*m_height/4);
-            memcpy(m_picFrame->data[2],m_data.data()+m_width*m_height*5/4,m_width*m_height/4);
-            if(avcodec_send_frame(m_picEncCtx,m_picFrame)<0)
-            {
-                qDebug()<<"截屏器发送一帧时出错!";
-            }
-            if(avcodec_receive_packet(m_picEncCtx,m_picPkt)<0)
-            {
-                qDebug()<<"截屏器解码时出错!";
-            }
-            QString fileName=m_picNamePrefix+"_"+QDateTime::currentDateTime().toString("yyyy-MM-dd_HH:mm:ss");
-            QDir::setCurrent("/home/rainbow/Pictures/monitor-captured/ScreenShot");
-            m_picFile->setFileName(fileName);
-            if(!m_picFile->open(QIODeviceBase::WriteOnly|QIODeviceBase::Truncate))
-            {
-                qDebug()<<"打开截屏文件失败!";
-            }
-            m_picFile->write((const char*)(m_picPkt->data),m_width*m_height*3/2);
+            emit notifyScreenShot(m_data);
             m_needPic=false;
-            m_picFile->close();
-            emit screenShotOK(QDir::currentPath());
-            QDir::setCurrent(QCoreApplication::applicationDirPath());
         }
-        emit sendFrame(m_data);
     }
 }
 
@@ -109,9 +51,6 @@ void VideoConsumer::destroy()
     {
         m_buffer->close();
     }
-    avcodec_free_context(&m_picEncCtx);
-    av_packet_free(&m_picPkt);
-    av_frame_free(&m_picFrame);
     m_stateMachine->stop();
 }
 
