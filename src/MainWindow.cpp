@@ -55,6 +55,7 @@ MainWindow::MainWindow(QWidget *parent)
     connect(m_videoConsumer,&VideoConsumer::notifyScreenShot,m_screenShooter,&ScreenShooter::screenShot);
     connect(m_screenShooter,&ScreenShooter::screenShotOK,this,[](QString dirName){
         QSystemTrayIcon tray;
+        tray.setIcon(QIcon::fromTheme(QIcon::ThemeIcon::HelpAbout));
         tray.show();
         tray.showMessage("截屏保存成功","保存在"+dirName,QSystemTrayIcon::Information,3000);
     });

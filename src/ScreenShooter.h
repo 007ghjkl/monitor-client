@@ -7,6 +7,7 @@
 #include <QDateTime>
 extern "C"{
 #include <libavcodec/avcodec.h>
+#include <libswscale/swscale.h>
 }
 
 class ScreenShooter : public QObject
@@ -18,7 +19,9 @@ public:
 private:
     AVCodecContext *m_enCtx=nullptr;
     AVPacket *m_pkt=nullptr;
-    AVFrame *m_frame=nullptr;
+    AVFrame *m_limitedFrame=nullptr;
+    AVFrame *m_fullFrame=nullptr;
+    SwsContext *m_swsCtx=nullptr;
     QString m_picNamePrefix{"监控截图"};
     QFile *m_picFile=nullptr;
 

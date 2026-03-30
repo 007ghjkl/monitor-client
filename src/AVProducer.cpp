@@ -362,6 +362,7 @@ void AVProducer::destroy()
     av_buffer_unref(&m_hwDiveceCtx);
     avcodec_free_context(&m_audioDecCtx);
     swr_free(&m_swrCtx);
+    sws_free_context(&m_swsCtx);
 
     if(m_videoBuf)
     {
@@ -387,6 +388,7 @@ void AVProducer::reset()
     av_buffer_unref(&m_hwDiveceCtx);
     avcodec_free_context(&m_audioDecCtx);
     swr_free(&m_swrCtx);
+    sws_free_context(&m_swsCtx);
     qDebug()<<"生产者:异步重置完成。";
     if(m_url.isEmpty())
     {
