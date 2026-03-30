@@ -1,6 +1,6 @@
 ﻿#include "AVBufferPool.h"
 #include <QDebug>
-
+// #define BUFFER_DEBUG
 qint64 AVBufferPool::readData(char *data, qint64 maxSize)
 {
     if(m_isWorking==false)
@@ -11,7 +11,9 @@ qint64 AVBufferPool::readData(char *data, qint64 maxSize)
     int available=(m_readPos<=m_writePos)?(m_writePos-m_readPos):(m_writePos-m_readPos+m_size);
     while(available<maxSize)
     {//缓冲区空
+#ifdef BUFFER_DEBUG
         qDebug()<<this<<"缓冲区空";
+#endif
         m_condEmpty.wait(&m_lock);
         available=(m_readPos<=m_writePos)?(m_writePos-m_readPos):(m_writePos-m_readPos+m_size);
         if(m_isWorking==false)
@@ -29,11 +31,15 @@ qint64 AVBufferPool::readData(char *data, qint64 maxSize)
         memcpy(data,m_buffer.data()+m_readPos,maxSize);
         m_readPos+=maxSize;
     }
+#ifdef BUFFER_DEBUG
     qDebug()<<this<<"消费数据:"<<maxSize;
+#endif
     available=(m_readPos<=m_writePos)?(m_writePos-m_readPos):(m_writePos-m_readPos+m_size);
     while(available<maxSize)
     {//缓冲区空
+#ifdef BUFFER_DEBUG
         qDebug()<<this<<"缓冲区空";
+#endif
         m_condEmpty.wait(&m_lock);
         available=(m_readPos<=m_writePos)?(m_writePos-m_readPos):(m_writePos-m_readPos+m_size);
         if(m_isWorking==false)
@@ -62,11 +68,15 @@ qint64 AVBufferPool::writeData(const char *data, qint64 maxSize)
         memcpy(m_buffer.data()+m_writePos,data,maxSize);
         m_writePos+=maxSize;
     }
+#ifdef BUFFER_DEBUG
     qDebug()<<this<<"生产数据:"<<maxSize;
+#endif
     int available=(m_writePos<=m_readPos)?(m_readPos-m_writePos):(m_readPos-m_writePos+m_size);
     while(available<maxSize)
     {//缓冲区满
+#ifdef BUFFER_DEBUG
         qDebug()<<this<<"缓冲区满";
+#endif
         m_condFull.wait(&m_lock);
         available=(m_writePos<=m_readPos)?(m_readPos-m_writePos):(m_readPos-m_writePos+m_size);
         if(m_isWorking==false)
