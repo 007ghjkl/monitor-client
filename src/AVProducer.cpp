@@ -357,9 +357,9 @@ void AVProducer::destroy()
     av_frame_free(&m_frame);
     av_frame_free(&m_tmpFrame);
     av_frame_free(&m_swsFrame);
-    av_frame_free(&m_swrFrame);
-    avcodec_free_context(&m_videoDecCtx);
+    if(m_withResample){av_frame_free(&m_swrFrame);}
     av_buffer_unref(&m_hwDiveceCtx);
+    avcodec_free_context(&m_videoDecCtx);
     avcodec_free_context(&m_audioDecCtx);
     swr_free(&m_swrCtx);
     sws_free_context(&m_swsCtx);
@@ -383,9 +383,9 @@ void AVProducer::reset()
     av_frame_free(&m_frame);
     av_frame_free(&m_tmpFrame);
     av_frame_free(&m_swsFrame);
-    av_frame_free(&m_swrFrame);
-    avcodec_free_context(&m_videoDecCtx);
+    if(m_withResample){av_frame_free(&m_swrFrame);}
     av_buffer_unref(&m_hwDiveceCtx);
+    avcodec_free_context(&m_videoDecCtx);
     avcodec_free_context(&m_audioDecCtx);
     swr_free(&m_swrCtx);
     sws_free_context(&m_swsCtx);

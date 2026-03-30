@@ -3,20 +3,6 @@
 ScreenShooter::ScreenShooter(QObject *parent)
     : QObject{parent}
 {
-    m_pkt=av_packet_alloc();
-    m_limitedFrame=av_frame_alloc();
-    m_fullFrame=av_frame_alloc();
-    if(!m_pkt||!m_limitedFrame||!m_fullFrame)
-    {
-        qDebug()<<"截屏器:分配AVPacket或AVFrame时出错!";
-        QCoreApplication::exit(-1);
-    }
-    m_swsCtx=sws_alloc_context();
-    if(!m_swsCtx)
-    {
-        qDebug()<<"截屏器:分配SwscaleContext时出错!";
-        QCoreApplication::exit(-1);
-    }
     m_picFile=new QFile(this);
 
     m_isReady=false;
@@ -41,6 +27,20 @@ void ScreenShooter::respondToProducer(int w, int h)
 {
     m_width=w;
     m_height=h;
+    m_pkt=av_packet_alloc();
+    m_limitedFrame=av_frame_alloc();
+    m_fullFrame=av_frame_alloc();
+    if(!m_pkt||!m_limitedFrame||!m_fullFrame)
+    {
+        qDebug()<<"截屏器:分配AVPacket或AVFrame时出错!";
+        QCoreApplication::exit(-1);
+    }
+    m_swsCtx=sws_alloc_context();
+    if(!m_swsCtx)
+    {
+        qDebug()<<"截屏器:分配SwscaleContext时出错!";
+        QCoreApplication::exit(-1);
+    }
     //一帧截屏
     auto encoder=avcodec_find_encoder(AV_CODEC_ID_JPEG2000);
     if(!encoder)
