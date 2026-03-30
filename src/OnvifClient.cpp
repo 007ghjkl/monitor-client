@@ -1,23 +1,35 @@
 #include "OnvifClient.h"
 namespace xmlns{
 QByteArray soap=QByteArrayLiteral("http://www.w3.org/2003/05/soap-envelope");
+QByteArray wsa=QByteArrayLiteral("http://schemas.xmlsoap.org/ws/2004/08/addressing");
+QByteArray wsdd=QByteArrayLiteral("http://schemas.xmlsoap.org/ws/2005/04/discovery");
 QByteArray wsse=QByteArrayLiteral("http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-secext-1.0.xsd");
 QByteArray wsu=QByteArrayLiteral("http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-utility-1.0.xsd");
 QByteArray tds=QByteArrayLiteral("http://www.onvif.org/ver10/device/wsdl");
 QByteArray trt=QByteArrayLiteral("http://www.onvif.org/ver10/media/wsdl");
 QByteArray ttpz=QByteArrayLiteral("http://www.onvif.org/ver20/ptz/wsdl");
+QByteArray tdn=QByteArrayLiteral("http://www.onvif.org/ver10/network/wsdl");
+}
+namespace WSDiscovery{
+QHostAddress multicastAddr("239.255.255.250");
+quint16 multicastPort=3702;
 }
 OnvifClient::OnvifClient(QObject *parent)
     : QObject{parent}
 {
+    m_discoverySocket=new QUdpSocket(this);
+    m_udpBody=new QBuffer(this);
+    m_udpBody->open(QIODeviceBase::ReadWrite);
+    connect(m_discoverySocket,&QUdpSocket::readyRead,this,&OnvifClient::handleDiscovery);
     m_httpPoster=new QNetworkAccessManager(this);
     m_httpBody=new QBuffer(this);
     m_httpBody->open(QIODeviceBase::ReadWrite);
-    m_xmlWriter.setDevice(m_httpBody);
 }
 
 OnvifClient::~OnvifClient()
 {
+    m_discoverySocket->close();
+    m_udpBody->close();
     m_httpBody->close();
 }
 
@@ -27,6 +39,7 @@ void OnvifClient::postSoap(SOAPOperation operation,OnvifAuthType authType,qreal 
     QUrl url{};
     m_httpBody->buffer().clear();
     m_httpBody->seek(0);
+    m_xmlWriter.setDevice(m_httpBody);
     m_xmlWriter.writeStartDocument();
     //Envelope
     m_xmlWriter.writeNamespace(xmlns::soap,"soap");
@@ -129,7 +142,7 @@ void OnvifClient::postSoap(SOAPOperation operation,OnvifAuthType authType,qreal 
     httpRequest.setHeader(QNetworkRequest::ContentTypeHeader,QStringLiteral("application/soap+xml; charset=utf-8"));
     httpRequest.setRawHeader("SOAPAction",soapAction);
     //发送请求
-    auto reply=m_httpPoster->post(httpRequest,m_httpBody->buffer());
+    auto reply=m_httpPoster->post(httpRequest,m_httpBody->data());
     connect(reply,&QNetworkReply::finished,this,[this,reply,operation]{
         int httpCode=reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
         if(httpCode==401)
@@ -301,8 +314,8 @@ void OnvifClient::makeAbsoluteMove(qreal vp, qreal vt, qreal p, qreal t, qreal z
 
 void OnvifClient::handleCapabilities(QNetworkReply* xml)
 {
-    m_domDoc.setContent(xml,QDomDocument::ParseOption::UseNamespaceProcessing);
-    auto capabilities=m_domDoc.elementsByTagName("Capabilities").at(0);
+    m_soapXmlDoc.setContent(xml,QDomDocument::ParseOption::UseNamespaceProcessing);
+    auto capabilities=m_soapXmlDoc.elementsByTagName("Capabilities").at(0);
     // qDebug()<<capabilities.toElement().tagName();
     auto device=capabilities.firstChildElement("Device");
     m_deviceUrl=device.firstChildElement("XAddr").text();
@@ -317,8 +330,8 @@ void OnvifClient::handleCapabilities(QNetworkReply* xml)
 
 void OnvifClient::handleDeviceInformation(QNetworkReply *xml)
 {
-    m_domDoc.setContent(xml,QDomDocument::ParseOption::UseNamespaceProcessing);
-    auto info=m_domDoc.elementsByTagName("GetDeviceInformationResponse").at(0);
+    m_soapXmlDoc.setContent(xml,QDomDocument::ParseOption::UseNamespaceProcessing);
+    auto info=m_soapXmlDoc.elementsByTagName("GetDeviceInformationResponse").at(0);
     m_deviceInfo.manufacturer=info.firstChildElement("Manufacturer").text();
     m_deviceInfo.model=info.firstChildElement("Model").text();
     m_deviceInfo.firmwareVersion=info.firstChildElement("FirmwareVersion").text();
@@ -328,8 +341,8 @@ void OnvifClient::handleDeviceInformation(QNetworkReply *xml)
 
 void OnvifClient::handleProfiles(QNetworkReply* xml)
 {
-    m_domDoc.setContent(xml,QDomDocument::ParseOption::UseNamespaceProcessing);
-    auto profilesList=m_domDoc.elementsByTagName("Profiles");
+    m_soapXmlDoc.setContent(xml,QDomDocument::ParseOption::UseNamespaceProcessing);
+    auto profilesList=m_soapXmlDoc.elementsByTagName("Profiles");
     for(int i=0;i<profilesList.length();++i)
     {
         auto profile=profilesList.at(i).toElement();
@@ -369,15 +382,15 @@ void OnvifClient::handleProfiles(QNetworkReply* xml)
 
 void OnvifClient::handleStreamUri(QNetworkReply *xml)
 {
-    m_domDoc.setContent(xml,QDomDocument::ParseOption::UseNamespaceProcessing);
-    m_streamUri=m_domDoc.elementsByTagName("Uri").at(0).toElement().text();
+    m_soapXmlDoc.setContent(xml,QDomDocument::ParseOption::UseNamespaceProcessing);
+    m_streamUri=m_soapXmlDoc.elementsByTagName("Uri").at(0).toElement().text();
     qDebug()<<"StreamUri:"<<m_streamUri;
 }
 
 void OnvifClient::handleStatus(QNetworkReply *xml)
 {
-    m_domDoc.setContent(xml,QDomDocument::ParseOption::UseNamespaceProcessing);
-    auto ptz=m_domDoc.elementsByTagName("PTZStatus").at(0).toElement();
+    m_soapXmlDoc.setContent(xml,QDomDocument::ParseOption::UseNamespaceProcessing);
+    auto ptz=m_soapXmlDoc.elementsByTagName("PTZStatus").at(0).toElement();
     auto pt=ptz.firstChildElement("Position").firstChildElement("PanTilt");
     m_ptzStatus.p=pt.attribute("x").toDouble();
     m_ptzStatus.t=pt.attribute("y").toDouble();
@@ -398,32 +411,119 @@ void OnvifClient::handleStatus(QNetworkReply *xml)
         m_ptzStatus.zState=PTZStatus::MoveState::Unknown;
 }
 
+void OnvifClient::discoverDevices()
+{
+    m_discoverySocket->close();
+    //绑定0.0.0.0:3702
+    m_discoverySocket->bind(QHostAddress::AnyIPv4,WSDiscovery::multicastPort,QUdpSocket::ShareAddress | QUdpSocket::ReuseAddressHint);
+    //选择正确接口
+    auto ifaces = QNetworkInterface::allInterfaces();
+    QList<QNetworkInterface> validInterfaces{};
+    for(auto &iface:ifaces)
+    {
+        const auto flags = iface.flags();
+        if (!(flags & QNetworkInterface::IsUp) || !(flags & QNetworkInterface::IsRunning) ||
+            (flags & QNetworkInterface::IsLoopBack) || !(flags & QNetworkInterface::CanMulticast)) {
+            continue;
+        }
+        validInterfaces.push_back(iface);
+    }
+    qDebug()<<"参与组播的接口数:"<<validInterfaces.length();
+    //探测报文
+    makeDiscoveryProber();
+    for(auto &iface:validInterfaces)
+    {
+        m_discoverySocket->setMulticastInterface(iface);
+        m_discoverySocket->writeDatagram(m_udpBody->buffer(),WSDiscovery::multicastAddr,WSDiscovery::multicastPort);
+    }
+}
+
+void OnvifClient::makeDiscoveryProber()
+{
+    m_discoverUuid=QUuid::createUuid();
+    m_udpBody->buffer().clear();
+    m_udpBody->seek(0);
+    m_xmlWriter.setDevice(m_udpBody);
+    m_xmlWriter.writeStartDocument();
+    //Envelope
+    m_xmlWriter.writeNamespace(xmlns::soap,"soap");
+    m_xmlWriter.writeNamespace(xmlns::wsa,"wsa");
+    m_xmlWriter.writeNamespace(xmlns::wsdd,"wsdd");
+    m_xmlWriter.writeNamespace(xmlns::tdn,"tdn");
+    m_xmlWriter.writeStartElement(xmlns::soap,"Envelope");
+    //Header
+    m_xmlWriter.writeStartElement(xmlns::soap,"Header");
+    m_xmlWriter.writeStartElement(xmlns::wsa,"Action");
+    m_xmlWriter.writeAttribute(xmlns::soap,"mustUnderstand","1");
+    m_xmlWriter.writeCharacters(QByteArrayLiteral("http://schemas.xmlsoap.org/ws/2005/04/discovery/Probe"));
+    m_xmlWriter.writeEndElement();//wsa:Action
+    m_xmlWriter.writeTextElement(xmlns::wsa,"MessageID","uuid:"+m_discoverUuid.toByteArray(QUuid::WithoutBraces));//wsa::MessageID
+    m_xmlWriter.writeStartElement(xmlns::wsa,"ReplyTo");
+    m_xmlWriter.writeTextElement(xmlns::wsa,"Address",QByteArrayLiteral("http://schemas.xmlsoap.org/ws/2004/08/addressing/role/anonymous"));//wsa:Address
+    m_xmlWriter.writeEndElement();//wsa:ReplyTo
+    m_xmlWriter.writeStartElement(xmlns::wsa,"To");
+    m_xmlWriter.writeAttribute(xmlns::soap,"mustUnderstand","1");
+    m_xmlWriter.writeCharacters(QByteArrayLiteral("urn:schemas-xmlsoap-org:ws:2005:04:discovery"));
+    m_xmlWriter.writeEndElement();//wsa:To
+    m_xmlWriter.writeEndElement();//soap:Header
+    //Body
+    m_xmlWriter.writeStartElement(xmlns::soap,"Body");
+    m_xmlWriter.writeStartElement(xmlns::wsdd,"Probe");
+    m_xmlWriter.writeTextElement(xmlns::wsdd,"Type",QByteArrayLiteral("tdn:NetworkVideoTransmitter"));//wssd:Type
+    m_xmlWriter.writeEndElement();//wsdd:Probe
+    m_xmlWriter.writeEndElement();//soap:Body
+    m_xmlWriter.writeEndElement();//soap:Envelope
+    m_xmlWriter.writeEndDocument();
+}
+
+void OnvifClient::handleDiscovery()
+{
+    while(m_discoverySocket->hasPendingDatagrams())
+    {
+        auto dataGram=m_discoverySocket->receiveDatagram();
+        if(!dataGram.isValid()||dataGram.isNull())
+        {
+            continue;
+        }
+        m_discoveryDoc.setContent(dataGram.data(),QDomDocument::ParseOption::UseNamespaceProcessing);
+        auto uuidElement=m_discoveryDoc.elementsByTagName("MessageID").at(0).toElement();
+        QString uuid=uuidElement.text().last(36);
+        if(uuid.compare(m_discoverUuid.toString(QUuid::WithoutBraces),Qt::CaseInsensitive)!=0)
+        {
+            continue;
+        }
+        QUrl xaddr=m_discoveryDoc.elementsByTagNameNS(xmlns::wsdd,"XAddrs").at(0).toElement().text();
+        qDebug()<<"找到"<<xaddr.toString();
+        // qDebug()<<dataGram.data()<<"\n";
+    }
+}
+
 void OnvifClient::respondToMainURL(QUrl url)
 {
     m_deviceUrl=url;
     qDebug()<<"设备服务地址:"<<m_deviceUrl;
     m_authType=OnvifAuthType::Wsse;
-    auto timer1=new QTimer(this);
-    auto timer2=new QTimer(this);
+    // auto timer1=new QTimer(this);
+    // auto timer2=new QTimer(this);
+    // auto absMove=[this,timer2]{
+    //     postSoap(SOAPOperation::AbsoluteMove,m_authType,1,1,0,0,0);
+    //     timer2->deleteLater();
+    // };
+    // auto stop=[this,timer1,timer2,absMove]{
+    //     postSoap(SOAPOperation::Stop,m_authType);
+    //     connect(timer2,&QTimer::timeout,this,absMove);
+    //     timer2->start(2000);
+    //     timer1->deleteLater();
+    // };
+    // connect(timer1,&QTimer::timeout,this,stop);
+    // postSoap(SOAPOperation::ContinuousMove,m_authType,0.5,0);
+    // timer1->start(2000);
+
     // postSoap(SOAPOperation::GetCapabilities,m_authType);
     // postSoap(SOAPOperation::GetDeviceInfomation,m_authType);
     // postSoap(SOAPOperation::GetProfiles,m_authType);
     // postSoap(SOAPOperation::GetStreamUri,m_authType);
     // postSoap(SOAPOperation::GetStatus,m_authType);
 
-    auto absMove=[this,timer2]{
-        postSoap(SOAPOperation::AbsoluteMove,m_authType,1,1,0,0,0);
-        timer2->deleteLater();
-    };
-    auto stop=[this,timer1,timer2,absMove]{
-        postSoap(SOAPOperation::Stop,m_authType);
-        connect(timer2,&QTimer::timeout,this,absMove);
-        timer2->start(2000);
-        timer1->deleteLater();
-    };
-    connect(timer1,&QTimer::timeout,this,stop);
-    postSoap(SOAPOperation::ContinuousMove,m_authType,0.5,0);
-    timer1->start(2000);
-
-    // absMove();
+    discoverDevices();
 }
