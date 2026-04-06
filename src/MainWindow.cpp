@@ -166,27 +166,29 @@ void MainWindow::doSetFullScreen(bool value)
 {
     static QMargins centralMargins;
     static int centralSpacing;
+    static Qt::WindowStates rawState;
     static QByteArray mainwindowState;
     if(value)
     {
         centralMargins=centralWidget()->layout()->contentsMargins();
         centralSpacing=centralWidget()->layout()->spacing();
+        rawState=windowState();
         mainwindowState=saveState();
-        setWindowState(windowState()^Qt::WindowFullScreen);
         menuBar()->setVisible(false);
         statusBar()->setVisible(false);
         centralWidget()->layout()->setContentsMargins(0,0,0,0);
         centralWidget()->layout()->setSpacing(0);
         removeDockWidget(ui->dockWidget);
+        setWindowState(Qt::WindowFullScreen);
     }
     else
     {
-        setWindowState(windowState()^Qt::WindowFullScreen);
         restoreState(mainwindowState);
         centralWidget()->layout()->setContentsMargins(centralMargins);
         centralWidget()->layout()->setSpacing(centralSpacing);
         menuBar()->setVisible(true);
         statusBar()->setVisible(true);
+        setWindowState(rawState);
     }
     m_isFullScreen=value;
     emit notifyFullScreen(value);

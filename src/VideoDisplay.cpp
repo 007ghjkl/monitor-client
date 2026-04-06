@@ -6,7 +6,7 @@
 #include <QApplication>
 #include <QMouseEvent>
 // #define DISPLAY_DEBUG
-VideoDisplay::VideoDisplay(QWidget* parent):QOpenGLWidget(parent),m_isControlBarVisible(true)
+VideoDisplay::VideoDisplay(QWidget* parent):QOpenGLWidget(parent),m_isControlBarVisible(true),m_isFullScreen(false)
 {
     m_isPlaying=false;
     m_textNoSignal="无信号";
@@ -312,27 +312,27 @@ void VideoDisplay::setupControlBar()
 
     // 播放/暂停 按钮
     m_playBtn = new QPushButton(m_controlBar);
-    m_playBtn->setIcon(style()->standardIcon(QStyle::SP_MediaPlay));
+    m_playBtn->setIcon(QPixmap(":/svg/resume.svg"));
     m_playBtn->setToolTip("播放/暂停");
     connect(m_playBtn, &QPushButton::clicked, this,[this]{
         if(m_isPlaying)
         {
-            m_playBtn->setIcon(style()->standardIcon(QStyle::SP_MediaPause));
+            m_playBtn->setIcon(QPixmap(":/svg/pause.svg"));
             qDebug() << ">>> [操作] 点击了播放";
         }
         else
         {
-            m_playBtn->setIcon(style()->standardIcon(QStyle::SP_MediaPlay));
+            m_playBtn->setIcon(QPixmap(":/svg/resume.svg"));
             qDebug() << ">>> [操作] 点击了暂停";
         }
     });
 
     // 停止 按钮
     m_stopBtn = new QPushButton(m_controlBar);
-    m_stopBtn->setIcon(style()->standardIcon(QStyle::SP_MediaStop));
+    m_stopBtn->setIcon(QPixmap(":/svg/stop_playing.svg"));
     m_stopBtn->setToolTip("停止");
     connect(m_stopBtn, &QPushButton::clicked, this,[this]{
-        m_playBtn->setIcon(style()->standardIcon(QStyle::SP_MediaPlay));
+        m_playBtn->setIcon(QPixmap(":/svg/resume.svg"));
         m_progressSlider->setValue(0);
         qDebug() << ">>> [操作] 点击了停止播放";
     });
@@ -365,7 +365,7 @@ void VideoDisplay::setupControlBar()
 
     // 全屏按钮
     m_fullScreenBtn = new QPushButton(m_controlBar);
-    m_fullScreenBtn->setIcon(style()->standardIcon(QStyle::SP_TitleBarMaxButton));
+    m_fullScreenBtn->setIcon(QPixmap(":/svg/fullscreen_enter.svg"));
     m_fullScreenBtn->setToolTip("全屏");
     // m_fullScreenBtn->setFlat(true);
     connect(m_fullScreenBtn, &QPushButton::clicked, this,[this]{
@@ -373,7 +373,7 @@ void VideoDisplay::setupControlBar()
     });
 
     // 设置按钮样式，让它们在深色背景上更好看
-    QString btnStyle = "QPushButton { border: none;width:30px;height:30px; border-radius: 15px;} "
+    QString btnStyle = "QPushButton {border: none;width:30px;height:30px; border-radius: 15px;} "
                        "QPushButton:hover { background-color: rgba(255, 255, 255, 50);}";
     m_playBtn->setStyleSheet(btnStyle);
     m_stopBtn->setStyleSheet(btnStyle);
@@ -407,12 +407,12 @@ void VideoDisplay::setupControlBar()
     // 布局组装
     QHBoxLayout *hLayout = new QHBoxLayout(m_controlBar);
     hLayout->setContentsMargins(15, 5, 15, 5);
-    hLayout->setSpacing(10);
+    hLayout->setSpacing(5);
     hLayout->addWidget(m_playBtn);
     hLayout->addWidget(m_stopBtn);
     hLayout->addWidget(m_progressSlider);
     hLayout->addWidget(m_timeLabel);
-    hLayout->addSpacing(10);
+    hLayout->addSpacing(5);
     hLayout->addWidget(m_volumeIconBtn);
     hLayout->addWidget(m_volumeSlider);
     hLayout->addWidget(m_fullScreenBtn);
@@ -517,13 +517,13 @@ void VideoDisplay::respondToMainFullScreen(bool value)
 {
     if(value)
     {
-        m_fullScreenBtn->setIcon(style()->standardIcon(QStyle::SP_TitleBarNormalButton));
+        m_fullScreenBtn->setIcon(QPixmap(":/svg/fullscreen_exit.svg"));
         m_fullScreenBtn->setToolTip("退出全屏");
         qDebug() << ">>> [操作] 进入全屏";
     }
     else
     {
-        m_fullScreenBtn->setIcon(style()->standardIcon(QStyle::SP_TitleBarMaxButton));
+        m_fullScreenBtn->setIcon(QPixmap(":/svg/fullscreen_enter.svg"));
         m_fullScreenBtn->setToolTip("全屏");
         qDebug() << ">>> [操作] 退出全屏";
     }
