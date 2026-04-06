@@ -240,6 +240,31 @@ void AVProducer::init()
         qDebug()<<"分配AVFrame空间时出错！";
         QCoreApplication::exit(-1);
     }
+    //元数据显示
+    m_metaTreeRoot.reset(new MetaTreeNode("音视频信息"));
+    QUrl rawUrl{};
+    rawUrl.setScheme(m_url.scheme());
+    rawUrl.setHost(m_url.host());
+    rawUrl.setPort(m_url.port());
+    rawUrl.setPath(m_url.path());
+    m_metaTreeRoot->addChild("URL",rawUrl);
+    auto metaVideoStream=m_metaTreeRoot->addChild("视频流");
+    metaVideoStream->addChild("宽度",m_width);
+    metaVideoStream->addChild("高度",m_height);
+    metaVideoStream->addChild("帧率",m_fps);
+    auto metaVideoCodec=metaVideoStream->addChild("编码格式");
+    metaVideoCodec->addChild("编码器",m_videoDecCtx->codec->long_name);
+    metaVideoCodec->addChild("比特率",static_cast<qint64>(m_videoDecCtx->bit_rate));
+    metaVideoCodec->addChild("动态范围",av_color_range_name(m_videoDecCtx->color_range));
+    metaVideoCodec->addChild("色域",av_color_space_name(m_videoDecCtx->colorspace));
+    // metaVideoCodec->addChild("像素格式",av_get_pix_fmt_name(m_pixFmt));
+    auto metaAudioStream=m_metaTreeRoot->addChild("音频流");
+    metaAudioStream->addChild("采样率",m_audioDecCtx->sample_rate);
+    metaAudioStream->addChild("声道数",m_audioDecCtx->ch_layout.nb_channels);
+    auto metaAudioCodec=metaAudioStream->addChild("编码格式");
+    metaAudioCodec->addChild("编码器",m_audioDecCtx->codec->long_name);
+    metaAudioCodec->addChild("比特率",static_cast<qint64>(m_audioDecCtx->bit_rate));
+    emit metaTreeDone(m_metaTreeRoot);
     //调试部分
     qDebug()<<"生产者:初始化完成。";
     m_isWorking=true;
@@ -389,6 +414,8 @@ void AVProducer::reset()
     avcodec_free_context(&m_audioDecCtx);
     swr_free(&m_swrCtx);
     sws_free_context(&m_swsCtx);
+    m_metaTreeRoot.reset();
+    emit metaTreeDone(m_metaTreeRoot);
     qDebug()<<"生产者:异步重置完成。";
     if(m_url.isEmpty())
     {

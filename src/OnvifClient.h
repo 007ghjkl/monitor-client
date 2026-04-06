@@ -14,6 +14,7 @@
 #include <QUdpSocket>
 #include <QNetworkInterface>
 #include <QNetworkDatagram>
+#include "MetaTreeNode.h"
 enum class OnvifAuthType{HttpDigest,Wsse,NoAuth};
 enum class SOAPOperation
 {
@@ -39,6 +40,7 @@ private:
     QUrl m_ptzXAddr{};//PTZ服务地址
     QString m_userName{"admin"};
     QString m_password{"zyn050504"};
+    QUrl m_streamUri{};
     struct DeviceInformation
     {
         QString manufacturer{};
@@ -81,7 +83,8 @@ private:
                 int max{};
             }pLimit,tLimit,zLimit;
         }ptz;
-    }m_profiles[8];
+    };
+    QList<struct DeviceProfile>m_profiles{};
     struct PTZStatus
     {
         qreal p{};
@@ -89,8 +92,16 @@ private:
         qreal z{};
         enum class MoveState{Moving,Idle,Unknown}ptState,zState;
     }m_ptzStatus;
+    struct PTZReserve
+    {
+        qreal vp{};
+        qreal vt{};
+        qreal p{};
+        qreal t{};
+        qreal z{};
+    }m_ptzReserve;
 
-    QUrl m_streamUri{};
+    bool m_haveProfiles=false;
 
     OnvifAuthType m_authType;
 
@@ -104,16 +115,16 @@ private:
     QBuffer *m_udpBody=nullptr;
     QDomDocument m_discoveryDoc;
 
-    void postSoap(SOAPOperation operation,OnvifAuthType authType,qreal vp=0,qreal vt=0,qreal p=0,qreal t=0,qreal z=0);
+    void postSoap(SOAPOperation operation,OnvifAuthType authType,bool block=true);
     void makeWsseHeader();
     void makeGetCapabilitiesBody();
     void makeGetDeviceInformation();
     void makeGetProfilesBody();
     void makeGetStreamUriBody();
     void makeGetStatusBody();
-    void makeContinuousMoveBody(qreal vp,qreal vt);
+    void makeContinuousMoveBody();
     void makeStopBody();
-    void makeAbsoluteMove(qreal vp,qreal vt,qreal p,qreal t,qreal z=0);
+    void makeAbsoluteMove();
     void handleCapabilities(QNetworkReply* xml);
     void handleDeviceInformation(QNetworkReply* xml);
     void handleProfiles(QNetworkReply* xml);
@@ -122,9 +133,13 @@ private:
 
     void discoverDevices();
     void makeDiscoveryProber();
+
+    QSharedPointer<MetaTreeNode> m_metaTreeRoot{};
+    void loadMetaTree();
 private slots:
     void handleDiscovery();
 signals:
+    void metaTreeDone(QSharedPointer<MetaTreeNode> metaTreeRoot);
 public slots:
     void respondToMainURL(QUrl url);
 };

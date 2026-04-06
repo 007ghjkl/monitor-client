@@ -1,4 +1,5 @@
 #include "OnvifClient.h"
+#include <QEventLoop>
 namespace xmlns{
 QByteArray soap=QByteArrayLiteral("http://www.w3.org/2003/05/soap-envelope");
 QByteArray wsa=QByteArrayLiteral("http://schemas.xmlsoap.org/ws/2004/08/addressing");
@@ -33,7 +34,7 @@ OnvifClient::~OnvifClient()
     m_httpBody->close();
 }
 
-void OnvifClient::postSoap(SOAPOperation operation,OnvifAuthType authType,qreal vp,qreal vt,qreal p,qreal t,qreal z)
+void OnvifClient::postSoap(SOAPOperation operation,OnvifAuthType authType,bool block)
 {
     QByteArray soapAction{};
     QUrl url{};
@@ -111,7 +112,7 @@ void OnvifClient::postSoap(SOAPOperation operation,OnvifAuthType authType,qreal 
         {
             soapAction=QByteArrayLiteral("http://www.onvif.org/ver20/ptz/wsdl/ContinuousMove");
             url=m_ptzXAddr;
-            makeContinuousMoveBody(vp,vt);
+            makeContinuousMoveBody();
             break;
         }
         case SOAPOperation::Stop:
@@ -125,7 +126,7 @@ void OnvifClient::postSoap(SOAPOperation operation,OnvifAuthType authType,qreal 
         {
             soapAction=QByteArrayLiteral("http://www.onvif.org/ver20/ptz/wsdl/AbsoluteMove");
             url=m_ptzXAddr;
-            makeAbsoluteMove(vp,vt,p,t,z);
+            makeAbsoluteMove();
             break;
         }
         case SOAPOperation::NoOperation:
@@ -142,47 +143,60 @@ void OnvifClient::postSoap(SOAPOperation operation,OnvifAuthType authType,qreal 
     httpRequest.setHeader(QNetworkRequest::ContentTypeHeader,QStringLiteral("application/soap+xml; charset=utf-8"));
     httpRequest.setRawHeader("SOAPAction",soapAction);
     //发送请求
-    auto reply=m_httpPoster->post(httpRequest,m_httpBody->data());
-    connect(reply,&QNetworkReply::finished,this,[this,reply,operation]{
-        int httpCode=reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
-        if(httpCode==401)
-        {//鉴权失败
-            qDebug()<<"401";
-            reply->deleteLater();
-            return;
-        }
+    auto handleReply=[this,operation](QNetworkReply *reply){
         switch(operation)
         {
-            case SOAPOperation::GetCapabilities:
-            {
-                handleCapabilities(reply);
-                break;
-            }
-            case SOAPOperation::GetDeviceInfomation:
-            {
-                handleDeviceInformation(reply);
-                break;
-            }
-            case SOAPOperation::GetProfiles:
-            {
-                handleProfiles(reply);
-                break;
-            }
-            case SOAPOperation::GetStreamUri:
-            {
-                handleStreamUri(reply);
-                break;
-            }
-            case SOAPOperation::GetStatus:
-            {
-                handleStatus(reply);
-                break;
-            }
-            default:
-                break;
+        case SOAPOperation::GetCapabilities:
+        {
+            handleCapabilities(reply);
+            break;
+        }
+        case SOAPOperation::GetDeviceInfomation:
+        {
+            handleDeviceInformation(reply);
+            break;
+        }
+        case SOAPOperation::GetProfiles:
+        {
+            handleProfiles(reply);
+            break;
+        }
+        case SOAPOperation::GetStreamUri:
+        {
+            handleStreamUri(reply);
+            break;
+        }
+        case SOAPOperation::GetStatus:
+        {
+            handleStatus(reply);
+            break;
+        }
+        default:
+            break;
         }
         reply->deleteLater();
-    });
+    };
+    auto reply=m_httpPoster->post(httpRequest,m_httpBody->data());
+    if(block)
+    {
+        QEventLoop local;
+        connect(reply,&QNetworkReply::finished,&local,&QEventLoop::quit);
+        local.exec();//阻塞，仅此函数
+        handleReply(reply);
+    }
+    else
+    {
+        connect(reply,&QNetworkReply::finished,this,[this,reply,handleReply]{
+            int httpCode=reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
+            if(httpCode==401)
+            {//鉴权失败
+                qDebug()<<"401";
+                reply->deleteLater();
+                return;
+            }
+            handleReply(reply);
+        });
+    }
 }
 
 void OnvifClient::makeWsseHeader()
@@ -263,7 +277,7 @@ void OnvifClient::makeGetStatusBody()
     m_xmlWriter.writeEndElement();//soap:Body
 }
 
-void OnvifClient::makeContinuousMoveBody(qreal vp,qreal vt)
+void OnvifClient::makeContinuousMoveBody()
 {
     // m_profiles[0].token="profile_1";
     m_xmlWriter.writeStartElement(xmlns::soap,"Body");
@@ -271,8 +285,8 @@ void OnvifClient::makeContinuousMoveBody(qreal vp,qreal vt)
     m_xmlWriter.writeTextElement("ProfileToken",m_profiles[0].token);//ProfileToken
     m_xmlWriter.writeStartElement("Velocity");
     m_xmlWriter.writeEmptyElement("PanTilt");
-    m_xmlWriter.writeAttribute("x",QString::number(vp));
-    m_xmlWriter.writeAttribute("y",QString::number(vt));//Pantilt
+    m_xmlWriter.writeAttribute("x",QString::number(m_ptzReserve.vp));
+    m_xmlWriter.writeAttribute("y",QString::number(m_ptzReserve.vt));//Pantilt
     m_xmlWriter.writeEndElement();//Velocity
     m_xmlWriter.writeEndElement();//ttpz:ContinuousMove
     m_xmlWriter.writeEndElement();//soap:Body
@@ -290,7 +304,7 @@ void OnvifClient::makeStopBody()
     m_xmlWriter.writeEndElement();//soap:Body
 }
 
-void OnvifClient::makeAbsoluteMove(qreal vp, qreal vt, qreal p, qreal t, qreal z)
+void OnvifClient::makeAbsoluteMove()
 {
     // m_profiles[0].token="profile_1";
     m_xmlWriter.writeStartElement(xmlns::soap,"Body");
@@ -298,15 +312,15 @@ void OnvifClient::makeAbsoluteMove(qreal vp, qreal vt, qreal p, qreal t, qreal z
     m_xmlWriter.writeTextElement("ProfileToken",m_profiles[0].token);//ProfileToken
     m_xmlWriter.writeStartElement("Position");
     m_xmlWriter.writeEmptyElement("PanTilt");
-    m_xmlWriter.writeAttribute("x",QString::number(p));
-    m_xmlWriter.writeAttribute("y",QString::number(t));//Pantilt
+    m_xmlWriter.writeAttribute("x",QString::number(m_ptzReserve.p));
+    m_xmlWriter.writeAttribute("y",QString::number(m_ptzReserve.t));//Pantilt
     m_xmlWriter.writeEmptyElement("Zoom");
-    m_xmlWriter.writeAttribute("x",QString::number(z));//Zoom
+    m_xmlWriter.writeAttribute("x",QString::number(m_ptzReserve.z));//Zoom
     m_xmlWriter.writeEndElement();//Position
     m_xmlWriter.writeStartElement("Speed");
     m_xmlWriter.writeEmptyElement("PanTilt");
-    m_xmlWriter.writeAttribute("x",QString::number(vp));
-    m_xmlWriter.writeAttribute("y",QString::number(vt));//Pantilt
+    m_xmlWriter.writeAttribute("x",QString::number(m_ptzReserve.vp));
+    m_xmlWriter.writeAttribute("y",QString::number(m_ptzReserve.vt));//Pantilt
     m_xmlWriter.writeEndElement();//Speed
     m_xmlWriter.writeEndElement();//ttpz:AbsoluteMove
     m_xmlWriter.writeEndElement();//soap:Body
@@ -337,12 +351,14 @@ void OnvifClient::handleDeviceInformation(QNetworkReply *xml)
     m_deviceInfo.firmwareVersion=info.firstChildElement("FirmwareVersion").text();
     m_deviceInfo.serialNumber=info.firstChildElement("SerialNumber").text();
     m_deviceInfo.hardwareID=info.firstChildElement("HardwareId").text();
+    qDebug()<<"设备信息:"<<m_deviceInfo.manufacturer<<m_deviceInfo.model<<m_deviceInfo.serialNumber;
 }
 
 void OnvifClient::handleProfiles(QNetworkReply* xml)
 {
     m_soapXmlDoc.setContent(xml,QDomDocument::ParseOption::UseNamespaceProcessing);
     auto profilesList=m_soapXmlDoc.elementsByTagName("Profiles");
+    m_profiles.resize(profilesList.length());
     for(int i=0;i<profilesList.length();++i)
     {
         auto profile=profilesList.at(i).toElement();
@@ -378,6 +394,7 @@ void OnvifClient::handleProfiles(QNetworkReply* xml)
         m_profiles[i].ptz.zLimit.max=z.firstChildElement("Max").text().toInt();
     }
     qDebug()<<"填充完成!";
+    m_haveProfiles=true;
 }
 
 void OnvifClient::handleStreamUri(QNetworkReply *xml)
@@ -476,6 +493,53 @@ void OnvifClient::makeDiscoveryProber()
     m_xmlWriter.writeEndDocument();
 }
 
+void OnvifClient::loadMetaTree()
+{
+    m_metaTreeRoot.reset(new MetaTreeNode("Onvif设备"));
+    auto metaDevice=m_metaTreeRoot->addChild("设备信息");
+    metaDevice->addChild("设备服务地址",m_deviceUrl);
+    metaDevice->addChild("制造商",m_deviceInfo.manufacturer);
+    metaDevice->addChild("型号",m_deviceInfo.model);
+    metaDevice->addChild("固件版本",m_deviceInfo.firmwareVersion);
+    metaDevice->addChild("序列号",m_deviceInfo.serialNumber);
+    metaDevice->addChild("硬件ID",m_deviceInfo.hardwareID);
+    auto metaMedia=m_metaTreeRoot->addChild("媒体信息");
+    metaMedia->addChild("媒体服务地址",m_mediaXAddr);
+    metaMedia->addChild("播放地址",m_streamUri);
+    for(auto &profile:m_profiles)
+    {
+        auto metaMediaProfile=metaMedia->addChild(profile.name);
+        metaMediaProfile->addChild("配置令牌",profile.token);
+        auto metaVideo=metaMediaProfile->addChild("视频流");
+        metaVideo->addChild("令牌",profile.videoEncoder.token);
+        metaVideo->addChild("编码器",profile.videoEncoder.encoding);
+        metaVideo->addChild("宽度",profile.videoEncoder.width);
+        metaVideo->addChild("高度",profile.videoEncoder.heiget);
+        metaVideo->addChild("帧率限制",profile.videoEncoder.fpsLimit);
+        metaVideo->addChild("码率限制",profile.videoEncoder.bitrateLimit);
+        auto metaAudio=metaMediaProfile->addChild("音频流");
+        metaAudio->addChild("令牌",profile.audioEncoder.token);
+        metaAudio->addChild("编码器",profile.audioEncoder.encoding);
+        metaAudio->addChild("采样率",profile.audioEncoder.sampleRate);
+    }
+    auto metaPTZ=m_metaTreeRoot->addChild("PTZ信息");
+    metaPTZ->addChild("PTZ服务地址",m_ptzXAddr);
+    for(auto &profile:m_profiles)
+    {
+        auto metaPTZProfile=metaPTZ->addChild(profile.name);
+        metaPTZProfile->addChild("配置令牌",profile.token);
+        metaPTZProfile->addChild("PTZ令牌",profile.ptz.token);
+        auto metaDefaultPTZSpeed=metaPTZProfile->addChild("默认速度");
+        metaDefaultPTZSpeed->addChild("水平",profile.ptz.defalutSpeed.p);
+        metaDefaultPTZSpeed->addChild("俯仰",profile.ptz.defalutSpeed.t);
+        metaDefaultPTZSpeed->addChild("变焦",profile.ptz.defalutSpeed.z);
+        auto metaPTZRange=metaPTZProfile->addChild("动作范围");
+        metaPTZRange->addChild("水平","["+QString::number(profile.ptz.pLimit.min)+","+QString::number(profile.ptz.pLimit.max)+"]");
+        metaPTZRange->addChild("俯仰","["+QString::number(profile.ptz.tLimit.min)+","+QString::number(profile.ptz.tLimit.max)+"]");
+        metaPTZRange->addChild("变焦","["+QString::number(profile.ptz.zLimit.min)+","+QString::number(profile.ptz.zLimit.max)+"]");
+    }
+}
+
 void OnvifClient::handleDiscovery()
 {
     while(m_discoverySocket->hasPendingDatagrams())
@@ -503,27 +567,12 @@ void OnvifClient::respondToMainURL(QUrl url)
     m_deviceUrl=url;
     qDebug()<<"设备服务地址:"<<m_deviceUrl;
     m_authType=OnvifAuthType::Wsse;
-    // auto timer1=new QTimer(this);
-    // auto timer2=new QTimer(this);
-    // auto absMove=[this,timer2]{
-    //     postSoap(SOAPOperation::AbsoluteMove,m_authType,1,1,0,0,0);
-    //     timer2->deleteLater();
-    // };
-    // auto stop=[this,timer1,timer2,absMove]{
-    //     postSoap(SOAPOperation::Stop,m_authType);
-    //     connect(timer2,&QTimer::timeout,this,absMove);
-    //     timer2->start(2000);
-    //     timer1->deleteLater();
-    // };
-    // connect(timer1,&QTimer::timeout,this,stop);
-    // postSoap(SOAPOperation::ContinuousMove,m_authType,0.5,0);
-    // timer1->start(2000);
-
-    // postSoap(SOAPOperation::GetCapabilities,m_authType);
-    // postSoap(SOAPOperation::GetDeviceInfomation,m_authType);
-    // postSoap(SOAPOperation::GetProfiles,m_authType);
-    // postSoap(SOAPOperation::GetStreamUri,m_authType);
-    // postSoap(SOAPOperation::GetStatus,m_authType);
-
-    discoverDevices();
+    postSoap(SOAPOperation::GetCapabilities,m_authType);
+    postSoap(SOAPOperation::GetDeviceInfomation,m_authType);
+    postSoap(SOAPOperation::GetProfiles,m_authType);
+    postSoap(SOAPOperation::GetStreamUri,m_authType);
+    postSoap(SOAPOperation::GetStatus,m_authType);
+    loadMetaTree();
+    emit metaTreeDone(m_metaTreeRoot);
+    // discoverDevices();
 }

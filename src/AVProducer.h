@@ -9,6 +9,7 @@
 #include <QFinalState>
 #include <QAudioSink>
 #include "AVBufferPool.h"
+#include "MetaTreeNode.h"
 extern "C"{
 #include <libavcodec/avcodec.h>
 #include <libavformat/avformat.h>
@@ -68,6 +69,8 @@ private:
     int m_imageSize;
     char m_errorStr[AV_ERROR_MAX_STRING_SIZE];
     bool openCodecContext(int *streamIdx,AVCodecContext **decCtx, AVFormatContext *fmtCtx, enum AVMediaType type);
+
+    QSharedPointer<MetaTreeNode> m_metaTreeRoot{};
 private slots:
     void init();
     void read();
@@ -92,5 +95,6 @@ signals:
     void turnToNoInput();//内部状态转移信号，配合reset()
     void foundVideoFormat(int w,int h,qreal fps);
     void foundAudioFormat(QAudioFormat f);
+    void metaTreeDone(QSharedPointer<MetaTreeNode> metaTreeRoot);
 };
 #endif // AVPRODUCER_H
