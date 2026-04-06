@@ -6,6 +6,7 @@
 #include <QSurfaceFormat>
 int main(int argc, char *argv[])
 {
+    // qputenv("QT_QPA_PLATFORM", "xcb");
     QSurfaceFormat format;
     format.setDepthBufferSize(24);
     format.setStencilBufferSize(8);

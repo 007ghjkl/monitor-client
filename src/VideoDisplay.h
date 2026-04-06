@@ -8,7 +8,14 @@
 #include <QOpenGLVertexArrayObject>
 #include <QOpenGLBuffer>
 #include <QScopedPointer>
-
+#include <QPushButton>
+#include <QSlider>
+#include <QLabel>
+#include <QGraphicsOpacityEffect>
+#include <QPropertyAnimation>
+#include <QStyle>
+#include <QHBoxLayout>
+#include <QTimer>
 class VideoDisplay : public QOpenGLWidget,protected QOpenGLFunctions
 {
     Q_OBJECT
@@ -42,14 +49,40 @@ private:
     void initShaders();
     void initGeometry();
     void initTextures();
-    void updateGeometry();
+    void updateDisplayGeometry();
 
     void drawNoSignal();
     void drawPromt();
+
+    QWidget *m_controlBar;
+    QPropertyAnimation *m_opacityAnimation;
+    QGraphicsOpacityEffect *m_opacityEffect;
+    bool m_isControlBarVisible;
+    QPushButton *m_playBtn;
+    QPushButton *m_stopBtn;
+    QSlider *m_progressSlider;
+    QLabel *m_timeLabel;
+    QPushButton *m_volumeIconBtn;
+    QSlider *m_volumeSlider;
+    QPushButton *m_fullScreenBtn;
+    void setupControlBar();
+    void updateControlBarGeometry();
+
+    bool m_isFullScreen;
+    bool event(QEvent *e)override;
+
+    QTimer *m_hideTimer;
+    bool eventFilter(QObject *watched, QEvent *event) override;
+private slots:
+    void showControlBar();
+    void hideControlBar();
 public slots:
     void respondToVideoSize(int w,int h);
     void displayFrame(QByteArray d);
     void respondToMainDisconnect();
+    void respondToMainFullScreen(bool value);
+signals:
+    void requestForFullScreen(bool value);
 };
 
 #endif // VIDEODISPLAY_H

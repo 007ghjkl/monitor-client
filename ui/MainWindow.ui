@@ -14,7 +14,7 @@
    <string>MainWindow</string>
   </property>
   <widget class="QWidget" name="centralwidget">
-   <layout class="QVBoxLayout" name="verticalLayout">
+   <layout class="QHBoxLayout" name="horizontalLayout">
     <item>
      <widget class="VideoDisplay" name="display"/>
     </item>
@@ -51,15 +51,22 @@
     </property>
     <addaction name="actionScreenShot"/>
    </widget>
+   <widget class="QMenu" name="menuView">
+    <property name="title">
+     <string>视图</string>
+    </property>
+    <addaction name="actionFullScreen"/>
+   </widget>
    <addaction name="menuConnect"/>
    <addaction name="menuPlay"/>
    <addaction name="menuCapture"/>
+   <addaction name="menuView"/>
   </widget>
   <widget class="QStatusBar" name="statusbar"/>
   <widget class="QDockWidget" name="dockWidget">
    <property name="minimumSize">
     <size>
-     <width>250</width>
+     <width>350</width>
      <height>178</height>
     </size>
    </property>
@@ -67,46 +74,69 @@
     <number>2</number>
    </attribute>
    <widget class="QWidget" name="dockWidgetContents">
-    <layout class="QVBoxLayout" name="verticalLayout_2">
+    <layout class="QVBoxLayout" name="verticalLayout">
      <item>
       <widget class="QComboBox" name="comboBoxChangePage">
+       <property name="currentIndex">
+        <number>0</number>
+       </property>
+       <item>
+        <property name="text">
+         <string>Onvif设备信息</string>
+        </property>
+       </item>
        <item>
         <property name="text">
          <string>音视频信息</string>
         </property>
        </item>
-       <item>
-        <property name="text">
-         <string>Onvif设备</string>
-        </property>
-       </item>
       </widget>
      </item>
      <item>
-      <widget class="QFrame" name="frame">
-       <property name="frameShape">
-        <enum>QFrame::Shape::StyledPanel</enum>
+      <widget class="QStackedWidget" name="stackedWidget">
+       <property name="currentIndex">
+        <number>0</number>
        </property>
-       <property name="frameShadow">
-        <enum>QFrame::Shadow::Raised</enum>
-       </property>
-       <layout class="QVBoxLayout" name="verticalLayout_4">
-        <item>
-         <widget class="QStackedWidget" name="stackedWidget">
-          <property name="currentIndex">
-           <number>1</number>
-          </property>
-          <widget class="QWidget" name="pageOnvif"/>
-          <widget class="QWidget" name="pageAVInfo">
-           <layout class="QVBoxLayout" name="verticalLayout_3">
-            <item>
-             <widget class="QTreeView" name="treeViewAVInfo"/>
-            </item>
-           </layout>
+       <widget class="QWidget" name="pageOnvif">
+        <layout class="QHBoxLayout" name="horizontalLayout_3">
+         <item>
+          <widget class="QTreeView" name="treeViewOnvifInfo">
+           <attribute name="headerMinimumSectionSize">
+            <number>100</number>
+           </attribute>
+           <attribute name="headerDefaultSectionSize">
+            <number>150</number>
+           </attribute>
           </widget>
-         </widget>
-        </item>
-       </layout>
+         </item>
+        </layout>
+       </widget>
+       <widget class="QWidget" name="pageAVInfo">
+        <layout class="QHBoxLayout" name="horizontalLayout_2">
+         <item>
+          <widget class="QTreeView" name="treeViewAVInfo">
+           <attribute name="headerVisible">
+            <bool>true</bool>
+           </attribute>
+           <attribute name="headerCascadingSectionResizes">
+            <bool>false</bool>
+           </attribute>
+           <attribute name="headerMinimumSectionSize">
+            <number>100</number>
+           </attribute>
+           <attribute name="headerDefaultSectionSize">
+            <number>150</number>
+           </attribute>
+           <attribute name="headerHighlightSections">
+            <bool>true</bool>
+           </attribute>
+           <attribute name="headerStretchLastSection">
+            <bool>true</bool>
+           </attribute>
+          </widget>
+         </item>
+        </layout>
+       </widget>
       </widget>
      </item>
     </layout>
@@ -149,6 +179,11 @@
   <action name="actionScreenShot">
    <property name="text">
     <string>截屏</string>
+   </property>
+  </action>
+  <action name="actionFullScreen">
+   <property name="text">
+    <string>全屏</string>
    </property>
   </action>
  </widget>

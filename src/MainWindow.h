@@ -4,6 +4,7 @@
 #include <QThread>
 #include <QCloseEvent>
 #include <QUrl>
+#include <QStandardItemModel>
 extern "C"{
 #include <libavformat/avformat.h>
 }
@@ -12,6 +13,7 @@ extern "C"{
 #include "AudioConsumer.h"
 #include "OnvifClient.h"
 #include "ScreenShooter.h"
+#include "MetaTreeNode.h"
 QT_BEGIN_NAMESPACE
 namespace Ui {
 class MainWindow;
@@ -29,7 +31,7 @@ public:
 private slots:
     void doConnectToUrl();
     void doDisconnect();
-
+    void doSetFullScreen(bool value);
 private:
     Ui::MainWindow *ui;
     QUrl m_url;
@@ -46,6 +48,12 @@ private:
     ScreenShooter *m_screenShooter;
     AVBufferPool *m_videoBuf,*m_audioBuf;
 
+    void fillMetaTreeRecursive(QStandardItem *parent,QSharedPointer<MetaTreeNode> node);
+    QStandardItemModel *m_avInfoModel;
+    QStandardItemModel *m_onvifInfoModel;
+
+    bool m_isFullScreen;
+
     void closeEvent(QCloseEvent* event) override;
 signals:
     void connectToURL(QUrl url);
@@ -56,5 +64,6 @@ signals:
     void notifyDisconnect();
     void notifyScreenShot();
     void connectToOnvif(QUrl deviceServiceAddr);
+    void notifyFullScreen(bool value);
 };
 #endif // MAINWINDOW_H

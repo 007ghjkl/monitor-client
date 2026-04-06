@@ -11,6 +11,7 @@ extern "C" {
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
     , ui(new Ui::MainWindow)
+    , m_isFullScreen(false)
 {
     ui->setupUi(this);
     initUiConnections();
@@ -74,6 +75,24 @@ MainWindow::MainWindow(QWidget *parent)
     m_audioConsumer->moveToThread(m_audioConsumerThread);
     m_onvifClient->moveToThread(m_onvifClientThread);
     m_screenShooter->moveToThread(m_screenShooterThread);
+
+    //元数据
+    m_avInfoModel=new QStandardItemModel(this);
+    ui->treeViewAVInfo->header()->setDefaultAlignment(Qt::AlignHCenter);
+    ui->treeViewAVInfo->setModel(m_avInfoModel);
+    connect(m_avProducer,&AVProducer::metaTreeDone,this,[this](auto root){
+        fillMetaTreeRecursive(m_avInfoModel->invisibleRootItem(),root);
+        m_avInfoModel->setHorizontalHeaderLabels({"属性","值"});
+        ui->treeViewAVInfo->expandAll();
+    });
+    m_onvifInfoModel=new QStandardItemModel(this);
+    ui->treeViewOnvifInfo->header()->setDefaultAlignment(Qt::AlignHCenter);
+    ui->treeViewOnvifInfo->setModel(m_onvifInfoModel);
+    connect(m_onvifClient,&OnvifClient::metaTreeDone,this,[this](auto root){
+        fillMetaTreeRecursive(m_onvifInfoModel->invisibleRootItem(),root);
+        m_onvifInfoModel->setHorizontalHeaderLabels({"属性","值"});
+        ui->treeViewOnvifInfo->expandAll();
+    });
 
     m_avProducerThread->start();
     m_videoConsumerThread->start();
@@ -143,6 +162,36 @@ void MainWindow::doDisconnect()
     emit notifyDisconnect();
 }
 
+void MainWindow::doSetFullScreen(bool value)
+{
+    static QMargins centralMargins;
+    static int centralSpacing;
+    static QByteArray mainwindowState;
+    if(value)
+    {
+        centralMargins=centralWidget()->layout()->contentsMargins();
+        centralSpacing=centralWidget()->layout()->spacing();
+        mainwindowState=saveState();
+        setWindowState(windowState()^Qt::WindowFullScreen);
+        menuBar()->setVisible(false);
+        statusBar()->setVisible(false);
+        centralWidget()->layout()->setContentsMargins(0,0,0,0);
+        centralWidget()->layout()->setSpacing(0);
+        removeDockWidget(ui->dockWidget);
+    }
+    else
+    {
+        setWindowState(windowState()^Qt::WindowFullScreen);
+        restoreState(mainwindowState);
+        centralWidget()->layout()->setContentsMargins(centralMargins);
+        centralWidget()->layout()->setSpacing(centralSpacing);
+        menuBar()->setVisible(true);
+        statusBar()->setVisible(true);
+    }
+    m_isFullScreen=value;
+    emit notifyFullScreen(value);
+}
+
 void MainWindow::initUiConnections()
 {
     //action
@@ -155,11 +204,37 @@ void MainWindow::initUiConnections()
     });
     connect(ui->actionDisconnect,&QAction::triggered,this,&MainWindow::doDisconnect);
     connect(ui->actionExit,&QAction::triggered,this,&QMainWindow::close);
-    connect(ui->actionScreenShot,&QAction::triggered,this,[this]{
-        emit notifyScreenShot();
+    connect(ui->actionScreenShot,&QAction::triggered,this,&MainWindow::notifyScreenShot);
+    connect(ui->actionFullScreen,&QAction::triggered,this,[this]{
+        doSetFullScreen(true);
     });
-
     //界面
-    connect(ui->comboBoxChangePage,&QComboBox::activated,ui->stackedWidget,&QStackedWidget::setCurrentIndex);
+    connect(ui->comboBoxChangePage,&QComboBox::currentIndexChanged,ui->stackedWidget,&QStackedWidget::setCurrentIndex);
+    //全屏
+    connect(ui->display,&VideoDisplay::requestForFullScreen,this,&MainWindow::doSetFullScreen);
+    connect(this,&MainWindow::notifyFullScreen,ui->display,&VideoDisplay::respondToMainFullScreen);
+}
+
+void MainWindow::fillMetaTreeRecursive(QStandardItem *parent, QSharedPointer<MetaTreeNode> node)
+{
+    if(node.isNull())
+    {
+        parent->model()->clear();
+        return;
+    }
+    auto keyItem=new QStandardItem(node->key());
+    keyItem->setEditable(false);
+    auto valueItem=new QStandardItem(node->value().toString());
+    valueItem->setData(node->value(),Qt::ToolTipRole);
+    parent->appendRow({keyItem,valueItem});
+    auto children=node->childen();
+    if(children.isEmpty())
+    {
+        return;
+    }
+    for(auto child:children)
+    {
+        fillMetaTreeRecursive(keyItem,child);
+    }
 }
 
