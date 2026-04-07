@@ -191,7 +191,7 @@
   <customwidget>
    <class>VideoDisplay</class>
    <extends>QOpenGLWidget</extends>
-   <header>src/VideoDisplay.h</header>
+   <header>src/gui/VideoDisplay.h</header>
   </customwidget>
  </customwidgets>
  <resources/>

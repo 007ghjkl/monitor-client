@@ -14,7 +14,7 @@
 #include <QUdpSocket>
 #include <QNetworkInterface>
 #include <QNetworkDatagram>
-#include "MetaTreeNode.h"
+#include "../utils/MetaTreeNode.h"
 enum class OnvifAuthType{HttpDigest,Wsse,NoAuth};
 enum class SOAPOperation
 {

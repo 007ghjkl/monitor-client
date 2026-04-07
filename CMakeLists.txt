@@ -46,8 +46,8 @@ elseif(UNIX)
 endif()
 set(PROJECT_SOURCES
         src/main.cpp
-        src/MainWindow.cpp
-        src/MainWindow.h
+        src/gui/MainWindow.cpp
+        src/gui/MainWindow.h
         ui/MainWindow.ui
 )
 include_directories(${PROJECT_SOURCE_DIR})
@@ -55,20 +55,17 @@ if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)
     qt_add_executable(monitor_client
         MANUAL_FINALIZATION
         ${PROJECT_SOURCES}
-        src/AVProducer.h src/AVProducer.cpp
-        src/AudioConsumer.h src/AudioConsumer.cpp
-        src/AVBufferPool.h src/AVBufferPool.cpp
-        src/VideoDisplay.h src/VideoDisplay.cpp
-        src/VideoConsumer.h src/VideoConsumer.cpp
-        src/DialogConnectToUrl.h src/DialogConnectToUrl.cpp ui/DialogConnectToUrl.ui
-        src/OnvifClient.h src/OnvifClient.cpp
-        src/DialogConnectToOnvif.h src/DialogConnectToOnvif.cpp ui/DialogConnectToOnvif.ui
-        src/ScreenShooter.h src/ScreenShooter.cpp
-        src/MetaTreeNode.h src/MetaTreeNode.cpp
+        src/core/AVProducer.h src/core/AVProducer.cpp
+        src/core/AudioConsumer.h src/core/AudioConsumer.cpp
+        src/core/AVBufferPool.h src/core/AVBufferPool.cpp
+        src/gui/VideoDisplay.h src/gui/VideoDisplay.cpp
+        src/core/VideoConsumer.h src/core/VideoConsumer.cpp
+        src/gui/DialogConnectToUrl.h src/gui/DialogConnectToUrl.cpp ui/DialogConnectToUrl.ui
+        src/core/OnvifClient.h src/core/OnvifClient.cpp
+        src/gui/DialogConnectToOnvif.h src/gui/DialogConnectToOnvif.cpp ui/DialogConnectToOnvif.ui
+        src/core/ScreenShooter.h src/core/ScreenShooter.cpp
+        src/utils/MetaTreeNode.h src/utils/MetaTreeNode.cpp
         res/icons.qrc
-
-
-
     )
 # Define target properties for Android with Qt 6 as:
 #    set_property(TARGET monitor_client APPEND PROPERTY QT_ANDROID_PACKAGE_SOURCE_DIR

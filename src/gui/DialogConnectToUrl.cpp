@@ -1,5 +1,5 @@
 #include "DialogConnectToUrl.h"
-#include "../ui/ui_DialogConnectToUrl.h"
+#include "../../ui/ui_DialogConnectToUrl.h"
 #include <QMessageBox>
 DialogConnectToUrl::DialogConnectToUrl(QWidget *parent)
     : QDialog(parent)

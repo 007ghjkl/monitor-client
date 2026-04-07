@@ -1,5 +1,5 @@
 #include "DialogConnectToOnvif.h"
-#include "../ui/ui_DialogConnectToOnvif.h"
+#include "../../ui/ui_DialogConnectToOnvif.h"
 #include <QMessageBox>
 DialogConnectToOnvif::DialogConnectToOnvif(QWidget *parent)
     : QDialog(parent)

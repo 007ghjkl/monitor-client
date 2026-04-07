@@ -1,5 +1,5 @@
 ﻿#include "MainWindow.h"
-#include "../ui/ui_MainWindow.h"
+#include "../../ui/ui_MainWindow.h"
 #include "DialogConnectToUrl.h"
 #include "DialogConnectToOnvif.h"
 // #include <QScopedPointer>

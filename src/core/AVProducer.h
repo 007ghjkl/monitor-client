@@ -9,7 +9,7 @@
 #include <QFinalState>
 #include <QAudioSink>
 #include "AVBufferPool.h"
-#include "MetaTreeNode.h"
+#include "../utils/MetaTreeNode.h"
 extern "C"{
 #include <libavcodec/avcodec.h>
 #include <libavformat/avformat.h>

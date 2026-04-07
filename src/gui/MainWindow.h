@@ -8,12 +8,12 @@
 extern "C"{
 #include <libavformat/avformat.h>
 }
-#include "AVProducer.h"
-#include "VideoConsumer.h"
-#include "AudioConsumer.h"
-#include "OnvifClient.h"
-#include "ScreenShooter.h"
-#include "MetaTreeNode.h"
+#include "../core/AVProducer.h"
+#include "../core/VideoConsumer.h"
+#include "../core/AudioConsumer.h"
+#include "../core/OnvifClient.h"
+#include "../core/ScreenShooter.h"
+#include "../utils/MetaTreeNode.h"
 QT_BEGIN_NAMESPACE
 namespace Ui {
 class MainWindow;
