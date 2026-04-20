@@ -60,11 +60,12 @@ if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)
         src/core/AVBufferPool.h src/core/AVBufferPool.cpp
         src/gui/VideoDisplay.h src/gui/VideoDisplay.cpp
         src/core/VideoConsumer.h src/core/VideoConsumer.cpp
-        src/gui/DialogConnectToUrl.h src/gui/DialogConnectToUrl.cpp ui/DialogConnectToUrl.ui
+
         src/core/OnvifClient.h src/core/OnvifClient.cpp
         src/gui/DialogConnectToOnvif.h src/gui/DialogConnectToOnvif.cpp ui/DialogConnectToOnvif.ui
         src/core/ScreenShooter.h src/core/ScreenShooter.cpp
         src/utils/MetaTreeNode.h src/utils/MetaTreeNode.cpp
+        src/gui/DirectionalPad.h src/gui/DirectionalPad.cpp
         res/icons.qrc
     )
 # Define target properties for Android with Qt 6 as:

@@ -16,6 +16,7 @@
 #include <QStyle>
 #include <QHBoxLayout>
 #include <QTimer>
+#include <QTime>
 class VideoDisplay : public QOpenGLWidget,protected QOpenGLFunctions
 {
     Q_OBJECT
@@ -42,6 +43,7 @@ private:
     QByteArray m_vsh;
     QByteArray m_fsh;
 
+    bool m_haveInput;
     bool m_isPlaying;
     QString m_textNoSignal;
     QString m_textPromt;
@@ -59,9 +61,12 @@ private:
     QGraphicsOpacityEffect *m_opacityEffect;
     bool m_isControlBarVisible;
     QPushButton *m_playBtn;
-    QPushButton *m_stopBtn;
     QSlider *m_progressSlider;
     QLabel *m_timeLabel;
+    qreal m_cacheTime;
+    qreal m_renderTime;
+    QString m_cacheTimeText;
+    QString m_renderTimeText;
     QPushButton *m_volumeIconBtn;
     QSlider *m_volumeSlider;
     QPushButton *m_fullScreenBtn;
@@ -77,12 +82,18 @@ private slots:
     void showControlBar();
     void hideControlBar();
 public slots:
+    void prepareToConnect();
     void respondToVideoSize(int w,int h);
     void displayFrame(QByteArray d);
-    void respondToMainDisconnect();
     void respondToMainFullScreen(bool value);
+    void respondToMainSuspend();
+    void prepareToReconnect();
+    void updateCacheTimeLabel(qreal cacheTime);
+    void updateRenderTimeLabel(qreal renderTime);
 signals:
     void requestForFullScreen(bool value);
+    void changeVolume(int value);
+    void requestSuspend();
 };
 
 #endif // VIDEODISPLAY_H

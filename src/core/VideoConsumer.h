@@ -16,7 +16,7 @@ public:
     auto currentState()const{return m_state;};
 
     void startStateMachine(){m_stateMachine->start();};
-    void setBuffer(AVBufferPool *buf){m_buffer=buf;};
+    void setBuffer(VideoBufferPool *buf){m_buffer=buf;};
 private:
     VideoConsumerState m_state;
     QStateMachine *m_stateMachine;
@@ -28,15 +28,13 @@ private:
     void setState(VideoConsumerState s){this->m_state=s;};
     void initStateMachine();
 
-    QTimer *m_baseTimer;
-
     int m_width;
     int m_height;
-    qreal m_fps;
-    AVBufferPool *m_buffer;
-    bool m_isWorking;//暂时
+    qsizetype m_frameSize;
+    VideoBufferPool *m_buffer;
     QByteArray m_data;
 
+    QMetaObject::Connection m_readConnection;
     bool m_needPic;
 
     void init();
@@ -44,18 +42,15 @@ private:
     void destroy();
     void reset();
 public slots:
-    void respondToProducer(int w,int h,qreal fps);
+    void respondToProducer(int w,int h);
     void respondToMainDestroy();
-    void respondToMainDisconnect();
     void respondToMainScreenShot();
 signals:
     void foundInput();//内部状态转移信号，配合respondToProducer()
     void initFinished();
-    void readyToRead();
     void turnToDestroy();//内部状态转移信号，配合respondToMainDestroy()
-    void turnToReset();//内部状态转移信号，配合respondToMainDisconnect()
-    void turnToNoInput();//内部状态转移信号，配合reset()
-    void setDisplaySize(int w,int h);
+    void turnToReset();//内部状态转移信号，与MainWindow::changeUrl()同义
+    void resetFinished();
     void sendFrame(QByteArray d);
     void notifyScreenShot(QByteArray d);
 };

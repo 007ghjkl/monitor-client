@@ -6,28 +6,16 @@
 #include <QApplication>
 #include <QMouseEvent>
 // #define DISPLAY_DEBUG
-VideoDisplay::VideoDisplay(QWidget* parent):QOpenGLWidget(parent),m_isControlBarVisible(true),m_isFullScreen(false)
+VideoDisplay::VideoDisplay(QWidget* parent)
+    :QOpenGLWidget(parent),m_isControlBarVisible(true),m_isFullScreen(false)
+    ,m_textNoSignal("无信号"),m_haveInput(false)
 {
-    m_isPlaying=false;
-    m_textNoSignal="无信号";
-    m_textPromt="提示";
-    // setAttribute(Qt::WA_TranslucentBackground,false);
-    // setAttribute(Qt::WA_AlwaysStackOnTop,false);
-    // QSurfaceFormat format=this->format();
-    // format.setAlphaBufferSize(0); // 强制关闭 Alpha 缓冲区
-    // format.setDepthBufferSize(24);
-    // format.setStencilBufferSize(8);
-    // format.setRenderableType(QSurfaceFormat::OpenGL);
-    // format.setProfile(QSurfaceFormat::CoreProfile);
-    // setFormat(format);
-    // setAutoFillBackground(true);
-
     setMouseTracking(true);
     setupControlBar();
     m_hideTimer = new QTimer(this);
     m_hideTimer->setInterval(3000);
-    m_hideTimer->start();
     connect(m_hideTimer, &QTimer::timeout, this, &VideoDisplay::hideControlBar);
+    m_hideTimer->start();
     qApp->installEventFilter(this);//监听全局鼠标事件以防鼠标在子控件上时不触发
 }
 
@@ -53,12 +41,11 @@ void VideoDisplay::initializeGL()
     //有输入再initTextures()
     glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-    // qDebug() << "Current Format Alpha Size:" << context()->format().alphaBufferSize();
 }
 
 void VideoDisplay::paintGL()
 {
-    if(m_isPlaying==false)
+    if(!m_haveInput)
     {
         drawNoSignal();
         return;
@@ -115,7 +102,7 @@ void VideoDisplay::paintGL()
 void VideoDisplay::resizeGL(int w, int h)
 {
     updateControlBarGeometry();
-    if(m_isPlaying==false)
+    if(!m_haveInput)
         return;
     updateDisplayGeometry();
 }
@@ -312,56 +299,47 @@ void VideoDisplay::setupControlBar()
 
     // 播放/暂停 按钮
     m_playBtn = new QPushButton(m_controlBar);
-    m_playBtn->setIcon(QPixmap(":/svg/resume.svg"));
+    m_playBtn->setIcon(QPixmap(":/svg/pause.svg"));
     m_playBtn->setToolTip("播放/暂停");
-    connect(m_playBtn, &QPushButton::clicked, this,[this]{
-        if(m_isPlaying)
-        {
-            m_playBtn->setIcon(QPixmap(":/svg/pause.svg"));
-            qDebug() << ">>> [操作] 点击了播放";
-        }
-        else
-        {
-            m_playBtn->setIcon(QPixmap(":/svg/resume.svg"));
-            qDebug() << ">>> [操作] 点击了暂停";
-        }
-    });
+    connect(m_playBtn, &QPushButton::clicked, this,&VideoDisplay::requestSuspend);
 
-    // 停止 按钮
-    m_stopBtn = new QPushButton(m_controlBar);
-    m_stopBtn->setIcon(QPixmap(":/svg/stop_playing.svg"));
-    m_stopBtn->setToolTip("停止");
-    connect(m_stopBtn, &QPushButton::clicked, this,[this]{
-        m_playBtn->setIcon(QPixmap(":/svg/resume.svg"));
-        m_progressSlider->setValue(0);
-        qDebug() << ">>> [操作] 点击了停止播放";
-    });
-
-    // 进度条
+   // 进度条
     m_progressSlider = new QSlider(Qt::Horizontal, m_controlBar);
     m_progressSlider->setRange(0, 100);
-    m_progressSlider->setValue(30); // 假装有个进度
-    connect(m_progressSlider, &QSlider::valueChanged, this,[this](auto value){
-        qDebug() << ">>> [操作] 进度条拖动至:" << value << "%";
-    });
+    m_progressSlider->setValue(0);
 
     // 时间显示
-    m_timeLabel = new QLabel("01:23 / 05:00", m_controlBar);
+    m_timeLabel = new QLabel("00:00:00/00:00:00", m_controlBar);
     m_timeLabel->setStyleSheet("color: white; font-size: 12px;");
 
     // 音量图标
     m_volumeIconBtn = new QPushButton(m_controlBar);
     m_volumeIconBtn->setIcon(style()->standardIcon(QStyle::SP_MediaVolume));
     // m_volumeIconBtn->setFlat(true); // 融合到背景
+    connect(m_volumeIconBtn,&QPushButton::clicked,this,[this]{
+        static int savedValue;
+        int currentValue=m_volumeSlider->value();
+        if(currentValue>0)
+        {
+            savedValue=currentValue;
+            m_volumeSlider->setValue(0);
+            m_volumeSlider->setEnabled(false);
+            m_volumeIconBtn->setIcon(style()->standardIcon(QStyle::SP_MediaVolumeMuted));
+        }
+        else
+        {
+            m_volumeSlider->setValue(savedValue);
+            m_volumeSlider->setEnabled(true);
+            m_volumeIconBtn->setIcon(style()->standardIcon(QStyle::SP_MediaVolume));
+        }
+    });
 
     // 音量条
     m_volumeSlider = new QSlider(Qt::Horizontal, m_controlBar);
     m_volumeSlider->setRange(0, 100);
-    m_volumeSlider->setValue(80);
+    m_volumeSlider->setValue(100);
     m_volumeSlider->setFixedWidth(100);
-    connect(m_volumeSlider, &QSlider::valueChanged, this,[](auto value){
-        qDebug() << ">>> [操作] 音量调整至:" << value;
-    });
+    connect(m_volumeSlider, &QSlider::valueChanged, this,&VideoDisplay::changeVolume);
 
     // 全屏按钮
     m_fullScreenBtn = new QPushButton(m_controlBar);
@@ -376,7 +354,6 @@ void VideoDisplay::setupControlBar()
     QString btnStyle = "QPushButton {border: none;width:30px;height:30px; border-radius: 15px;} "
                        "QPushButton:hover { background-color: rgba(255, 255, 255, 50);}";
     m_playBtn->setStyleSheet(btnStyle);
-    m_stopBtn->setStyleSheet(btnStyle);
     m_volumeIconBtn->setStyleSheet(btnStyle);
     m_fullScreenBtn->setStyleSheet(btnStyle);
     QString sliderStyle=R"(
@@ -409,7 +386,6 @@ void VideoDisplay::setupControlBar()
     hLayout->setContentsMargins(15, 5, 15, 5);
     hLayout->setSpacing(5);
     hLayout->addWidget(m_playBtn);
-    hLayout->addWidget(m_stopBtn);
     hLayout->addWidget(m_progressSlider);
     hLayout->addWidget(m_timeLabel);
     hLayout->addSpacing(5);
@@ -481,14 +457,21 @@ void VideoDisplay::hideControlBar()
     m_isControlBarVisible = false;
 }
 
+void VideoDisplay::prepareToConnect()
+{
+    m_textNoSignal="正在连接...";
+    update();
+}
+
 void VideoDisplay::respondToVideoSize(int w, int h)
 {
     m_videoWidth=w;
     m_videoHeight=h;
-    m_isPlaying=(w>0&&h>0);
-    if(m_isPlaying)
+    m_haveInput=(w>0&&h>0);
+    if(m_haveInput)
     {
         initTextures();
+        m_isPlaying=true;
     }
     qDebug()<<"成功获取显示分辨率:"<<w<<"x"<<h;
     // update();
@@ -503,29 +486,60 @@ void VideoDisplay::displayFrame(QByteArray d)
     update();
 }
 
-void VideoDisplay::respondToMainDisconnect()
-{
-    m_isPlaying=false;
-    m_videoWidth=m_videoHeight=0;
-    m_yData.clear();
-    m_uData.clear();
-    m_vData.clear();
-    update();
-}
-
 void VideoDisplay::respondToMainFullScreen(bool value)
 {
     if(value)
     {
         m_fullScreenBtn->setIcon(QPixmap(":/svg/fullscreen_exit.svg"));
         m_fullScreenBtn->setToolTip("退出全屏");
-        qDebug() << ">>> [操作] 进入全屏";
+        //qDebug() << ">>> [操作] 进入全屏";
     }
     else
     {
         m_fullScreenBtn->setIcon(QPixmap(":/svg/fullscreen_enter.svg"));
         m_fullScreenBtn->setToolTip("全屏");
-        qDebug() << ">>> [操作] 退出全屏";
+        //qDebug() << ">>> [操作] 退出全屏";
     }
     m_isFullScreen=value;
+}
+
+void VideoDisplay::respondToMainSuspend()
+{
+    if(m_isPlaying)
+    {
+        m_playBtn->setIcon(QPixmap(":/svg/resume.svg"));
+        m_isPlaying=false;
+    }
+    else
+    {
+        m_playBtn->setIcon(QPixmap(":/svg/pause.svg"));
+        m_isPlaying=true;
+    }
+}
+
+void VideoDisplay::prepareToReconnect()
+{
+    m_haveInput=m_isPlaying=false;
+    m_videoWidth=m_videoHeight=0;
+    update();
+}
+
+void VideoDisplay::updateCacheTimeLabel(qreal cacheTime)
+{
+    m_cacheTime=cacheTime;
+    QTime time=QTime::fromMSecsSinceStartOfDay(cacheTime*1000);
+    m_cacheTimeText=time.toString();
+    m_timeLabel->setText(m_renderTimeText+"/"+m_cacheTimeText);
+    m_progressSlider->setValue(m_renderTime/m_cacheTime*100);
+    m_timeLabel->update();
+}
+
+void VideoDisplay::updateRenderTimeLabel(qreal renderTime)
+{
+    m_renderTime=renderTime;
+    QTime time=QTime::fromMSecsSinceStartOfDay(renderTime*1000);
+    m_renderTimeText=time.toString();
+    m_timeLabel->setText(m_renderTimeText+"/"+m_cacheTimeText);
+    m_progressSlider->setValue(m_renderTime/m_cacheTime*100);
+    m_timeLabel->update();
 }

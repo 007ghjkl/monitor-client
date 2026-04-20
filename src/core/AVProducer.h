@@ -36,11 +36,11 @@ private:
     QState *m_stateReset;
     void setState(AVProducerState s){this->m_state=s;};
     void initStateMachine();
-    bool m_isWorking;
+    bool m_isWorking;//标示Reading状态下的播放与暂停
 
     QUrl m_url{};
-    AVBufferPool *m_videoBuf;
-    AVBufferPool *m_audioBuf;
+    VideoBufferPool *m_videoBuf;
+    AudioBufferPool *m_audioBuf;
 
     bool m_haveVideo=false,m_haveAudio=false;
     int m_width=0, m_height=0;
@@ -52,8 +52,8 @@ private:
 
     bool m_withScale;
     SwsContext* m_swsCtx=nullptr;
-    AVFrame *m_tmpFrame=nullptr;
-    AVFrame *m_swsFrame=nullptr;
+    AVFrame *m_swFrame=nullptr;
+    AVFrame *m_scaleFrame=nullptr;
 
     bool m_withResample;
     SwrContext* m_swrCtx=nullptr;
@@ -79,22 +79,24 @@ private slots:
 public:
     explicit AVProducer(QObject *parent = nullptr);
     ~AVProducer();
-    void setBuffers(AVBufferPool *vb,AVBufferPool *ab){m_videoBuf=vb;m_audioBuf=ab;};
+    void setBuffers(VideoBufferPool *vb,AudioBufferPool *ab){m_videoBuf=vb;m_audioBuf=ab;};
     auto currentState()const{return m_state;};
     void startStateMachine(){m_stateMachine->start();};
 public slots:
-    void respondToMainURL(QUrl url);
+    void respondToMainUrl(QUrl url);
     void respondToMainDestroy();
-    void respondToMainDisconnect();
+    void respondToMainSuspend();
+    void respondToMainChangeUrl(QUrl url);
 signals:
     void foundInput();//内部状态转移信号，配合respondToMainURL()
     void initFinished();
     void readyToRead();
     void turnToDestroy();//内部状态转移信号，配合respondToMainDestroy()
     void turnToReset();//内部状态转移信号，配合respondToMainDisconnect()
-    void turnToNoInput();//内部状态转移信号，配合reset()
-    void foundVideoFormat(int w,int h,qreal fps);
+    void resetFinished();
+    void foundVideoFormat(int w,int h);
     void foundAudioFormat(QAudioFormat f);
+    void activeBuffers();
     void metaTreeDone(QSharedPointer<MetaTreeNode> metaTreeRoot);
 };
 #endif // AVPRODUCER_H

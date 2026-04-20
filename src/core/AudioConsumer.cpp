@@ -1,6 +1,5 @@
 ﻿#include "AudioConsumer.h"
-#include <QElapsedTimer>
-
+#include <QMediaDevices>
 void AudioConsumer::preInit()
 {
     m_format.setSampleRate(48000);
@@ -8,59 +7,45 @@ void AudioConsumer::preInit()
     m_format.setChannelCount(2);
     m_player=new QAudioSink(m_format,this);
     m_player->deleteLater();
+    m_player=nullptr;
     disconnect(m_stateNoInput,&QState::entered,this,&AudioConsumer::preInit);
+    m_device=QMediaDevices::defaultAudioOutput();
 }
 
 void AudioConsumer::read()
 {
     m_player->start(m_buffer);
-    qDebug()<<"音频消费者:开始播放。";
+    qDebug()<<"音频消费者:开始播放,音量:"<<m_player->volume();
     // qDebug()<<player->error();
     // qDebug()<<player->state();
 }
 
 void AudioConsumer::init()
 {
-    m_player=new QAudioSink(m_format,this);
-    // qDebug()<<"音频默认缓冲:"<<player->bufferSize();
-    if(m_buffer->open(QIODeviceBase::ReadOnly)==false)
-    {
-        qDebug()<<"音频消费者打开缓冲区失败!";
-        QCoreApplication::exit(-1);
-    }
+    m_player=new QAudioSink(m_device,m_format,this);
+    m_player->setBufferSize(2048);
+    qDebug()<<"音频默认缓冲:"<<m_player->bufferSize();
     connect(m_player,&QAudioSink::stateChanged,this,[this](auto s){qDebug()<<"AudioSink:"<<s<<m_player->error();});
-    m_buffer->sleep(1000);
-    qDebug()<<"音频消费者:"<<"采样率"<<m_format.sampleRate()<<",声道格式"<<m_format.channelConfig()<<",采样格式"<<m_format.sampleFormat();
+    qDebug()<<"音频消费者:"<<"采样率"<<m_format.sampleRate()<<",声道数"<<m_format.channelCount()<<",采样格式"<<m_format.sampleFormat();
+    // qDebug()<<"audioBuf:"<<m_buffer->isOpen();
     emit initFinished();
 }
 
 void AudioConsumer::destroy()
 {
     qDebug()<<"音频消费者:开始销毁...";
-    if(m_buffer->isOpen())
+    if(m_player)
     {
-        if(m_player)
-        {
-            m_player->stop();
-        }
-        m_buffer->close();
+        m_player->reset();
     }
     m_stateMachine->stop();
 }
 
 void AudioConsumer::reset()
 {
-    if(m_player)
-    {
-        m_player->stop();
-        m_player->deleteLater();
-    }
-    if(m_buffer->isOpen())
-    {
-        m_buffer->close();
-    }
-    qDebug()<<"音频消费者:异步重置完成。";
-    emit turnToNoInput();
+    m_player->stop();
+    m_player->deleteLater();
+    emit resetFinished();
 }
 
 AudioConsumer::AudioConsumer(QObject *parent)
@@ -100,25 +85,22 @@ void AudioConsumer::initStateMachine()
     connect(m_stateDestroy,&QFinalState::entered,this,&AudioConsumer::destroy);
     connect(m_stateReset,&QState::entered,this,&AudioConsumer::reset);
     //设置状态转移
-    m_stateNoInput->addTransition(this,&AudioConsumer::foundFormat,m_stateInit);
+    m_stateNoInput->addTransition(this,&AudioConsumer::foundInput,m_stateInit);
     m_stateNoInput->addTransition(this,&AudioConsumer::turnToDestroy,m_stateDestroy);
     m_stateInit->addTransition(this,&AudioConsumer::initFinished,m_stateReading);
     m_stateInit->addTransition(this,&AudioConsumer::turnToDestroy,m_stateDestroy);
-    m_stateInit->addTransition(this,&AudioConsumer::turnToReset,m_stateReset);
     m_stateReading->addTransition(this,&AudioConsumer::turnToDestroy,m_stateDestroy);
     m_stateReading->addTransition(this,&AudioConsumer::turnToReset,m_stateReset);
-    m_stateReset->addTransition(this,&AudioConsumer::turnToNoInput,m_stateNoInput);
+    m_stateReset->addTransition(this,&AudioConsumer::resetFinished,m_stateNoInput);
+    m_stateReset->addTransition(this,&AudioConsumer::turnToDestroy,m_stateDestroy);
     //应用设置
     m_stateMachine->setInitialState(m_stateNoInput);
 }
 
 void AudioConsumer::respondToProducer(QAudioFormat f)
 {
-    if(currentState()==AudioConsumerState::NoInput)
-    {
-        m_format=f;
-        emit foundFormat();
-    }
+    m_format=f;
+    emit foundInput();
 }
 
 void AudioConsumer::respondToMainDestroy()
@@ -127,9 +109,21 @@ void AudioConsumer::respondToMainDestroy()
     emit turnToDestroy();
 }
 
-void AudioConsumer::respondToMainDisconnect()
+void AudioConsumer::respondToMainSuspend()
 {
-    qDebug()<<"音频消费者:开始断开连接。";
-    emit turnToReset();
+    if(currentState()!=AudioConsumerState::Reading){return;}
+    if(QAudio::ActiveState==m_player->state())
+    {
+        m_player->suspend();
+    }
+    else
+    {
+        m_player->resume();
+    }
+}
+
+void AudioConsumer::setVolume(int value)
+{
+    m_player->setVolume((qreal)value/100);
 }
 

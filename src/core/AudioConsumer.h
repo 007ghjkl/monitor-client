@@ -5,6 +5,7 @@
 #include <QStateMachine>
 #include <QFinalState>
 #include <QAudioSink>
+#include <QMediaDevices>
 #include "AVBufferPool.h"
 #include <QCloseEvent>
 extern "C"{
@@ -28,10 +29,11 @@ private:
     void setState(AudioConsumerState s){this->m_state=s;};
     void initStateMachine();
 
-    AVBufferPool *m_buffer;
+    AudioBufferPool *m_buffer;
     qreal m_delayTime;
 
     QAudioFormat m_format;
+    QAudioDevice m_device;
     QAudioSink *m_player;
 
 private slots:
@@ -43,19 +45,20 @@ private slots:
 public:
     explicit AudioConsumer(QObject *parent = nullptr);
     ~AudioConsumer();
-    void setBuffer(AVBufferPool *buf){m_buffer=buf;};
+    void setBuffer(AudioBufferPool *buf){m_buffer=buf;};
     auto currentState()const{return m_state;};
     void startStateMachine(){m_stateMachine->start();};
 public slots:
     void respondToProducer(QAudioFormat f);
     void respondToMainDestroy();
-    void respondToMainDisconnect();
+    void respondToMainSuspend();
+    void setVolume(int value);
 signals:
-    void foundFormat();//内部状态转移信号，配合respondToProducer()
+    void foundInput();//内部状态转移信号，配合respondToProducer()
     void initFinished();
     void turnToDestroy();//内部状态转移信号，配合respondToMainDestroy()
-    void turnToReset();//内部状态转移信号，配合respondToMainDisconnect()
-    void turnToNoInput();//内部状态转移信号，配合reset()
+    void turnToReset();//内部状态转移信号,与MainWindow::changeUrl()同义
+    void resetFinished();//内部状态转移信号，配合reset()
 };
 
 #endif // AUDIOCONSUMER_H

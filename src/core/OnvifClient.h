@@ -14,6 +14,7 @@
 #include <QUdpSocket>
 #include <QNetworkInterface>
 #include <QNetworkDatagram>
+#include <QMap>
 #include "../utils/MetaTreeNode.h"
 enum class OnvifAuthType{HttpDigest,Wsse,NoAuth};
 enum class SOAPOperation
@@ -38,9 +39,8 @@ private:
     QUrl m_deviceUrl{};//设备服务地址
     QUrl m_mediaXAddr{};//媒体服务地址
     QUrl m_ptzXAddr{};//PTZ服务地址
-    QString m_userName{"admin"};
-    QString m_password{"zyn050504"};
-    QUrl m_streamUri{};
+    QString m_userName{};
+    QString m_password{};
     struct DeviceInformation
     {
         QString manufacturer{};
@@ -53,6 +53,7 @@ private:
     {
         QString token{};
         QString name{};
+        QUrl streamUri{};
         struct VideoEncoderConfiguration
         {
             QString token{};
@@ -79,12 +80,13 @@ private:
             }defalutSpeed;
             struct PTZLimit
             {
-                int min{};
-                int max{};
+                qreal min{};
+                qreal max{};
             }pLimit,tLimit,zLimit;
         }ptz;
     };
     QList<struct DeviceProfile>m_profiles{};
+    QMap<QString,QUrl> m_streams;
     struct PTZStatus
     {
         qreal p{};
@@ -100,8 +102,8 @@ private:
         qreal t{};
         qreal z{};
     }m_ptzReserve;
-
-    bool m_haveProfiles=false;
+    int m_currentProfileIndex;
+    bool m_isConnected=false;
 
     OnvifAuthType m_authType;
 
@@ -131,17 +133,28 @@ private:
     void handleStreamUri(QNetworkReply* xml);
     void handleStatus(QNetworkReply* xml);
 
-    void discoverDevices();
     void makeDiscoveryProber();
 
     QSharedPointer<MetaTreeNode> m_metaTreeRoot{};
     void loadMetaTree();
+
+    void makeUpStreamAddresses();
 private slots:
     void handleDiscovery();
 signals:
     void metaTreeDone(QSharedPointer<MetaTreeNode> metaTreeRoot);
+    void matchDiscovery(QUrl url);
+    void authFailed();
+    void sendPTZProfile(QList<qreal> defaultSpeed,QList<QPair<qreal,qreal>> range);
+    void reportPTZStatus(qreal p,qreal t,qreal z);
+    void sendStreamUris(QMap<QString,QUrl> streams);
 public slots:
-    void respondToMainURL(QUrl url);
+    void discoverDevices();
+    void respondToMainDevice(QUrl url,QString userName,QString password);
+    void absoluteMove(qreal vp,qreal vt,qreal p,qreal t,qreal z);
+    void queryPTZStatus();
+    void continuousMove(qreal vp,qreal vt);
+    void stopMove();
 };
 
 #endif // ONVIFCLIENT_H
